@@ -151,12 +151,18 @@ __export(startup_exports, {
   trackStartupTime: () => trackStartupTime
 });
 function trackStartupTime() {
-  setTimeout(() => {
-    const start = global.__OPTIC_APP_START_TIME__ || Date.now();
-    const duration = Date.now() - start;
-    useMetricsStore.getState().setStartupTime(duration);
-    console.log(`[useoptic] Startup time: ${duration}ms`);
-  }, 0);
+  if (global.__OPTIC_STARTUP_CAPTURED__) {
+    return;
+  }
+  const start = global.__OPTIC_APP_START_TIME__ || Date.now();
+  requestAnimationFrame(() => {
+    if (!global.__OPTIC_STARTUP_CAPTURED__) {
+      const duration = Date.now() - start;
+      global.__OPTIC_STARTUP_CAPTURED__ = true;
+      useMetricsStore.getState().setStartupTime(duration);
+      console.log(`[useoptic] Startup time: ${duration}ms`);
+    }
+  });
 }
 var init_startup = __esm({
   "src/metrics/startup.ts"() {
@@ -164,6 +170,9 @@ var init_startup = __esm({
     init_metricsStore();
     if (global.__OPTIC_APP_START_TIME__ === void 0) {
       global.__OPTIC_APP_START_TIME__ = Date.now();
+    }
+    if (global.__OPTIC_STARTUP_CAPTURED__ === void 0) {
+      global.__OPTIC_STARTUP_CAPTURED__ = false;
     }
   }
 });

@@ -19,7 +19,7 @@ async function InitOptic(options = {}) {
     console.log("[Optic] TTI tracking enabled");
   }
   if (startup) {
-    const { trackStartupTime } = await import("./startup-RCNCHPUR.mjs");
+    const { trackStartupTime } = await import("./startup-GQJSL76P.mjs");
     trackStartupTime();
     console.log("[Optic] Startup tracking enabled");
   }
