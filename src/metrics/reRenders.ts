@@ -19,6 +19,12 @@ export function useRenderMonitor<T extends Record<string, any>>(
 
   const prevProps = useRef<T | null>(null);
   const incrementReRender = useMetricsStore((state) => state.incrementReRender);
+  const currentScreen = useMetricsStore((state) => state.currentScreen);
+
+  useEffect(() => {
+    // Reset prevProps when screen changes
+    prevProps.current = null;
+  }, [currentScreen]);
 
   useEffect(() => {
     if (prevProps.current) {

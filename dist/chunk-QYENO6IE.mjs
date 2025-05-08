@@ -1,6 +1,6 @@
 import {
   useMetricsStore
-} from "./chunk-RTAHOVXP.mjs";
+} from "./chunk-PY6A55FM.mjs";
 
 // src/metrics/reRenders.ts
 import * as React from "react";
@@ -12,6 +12,10 @@ function useRenderMonitor(componentName, props) {
   }
   const prevProps = useRef(null);
   const incrementReRender = useMetricsStore((state) => state.incrementReRender);
+  const currentScreen = useMetricsStore((state) => state.currentScreen);
+  useEffect(() => {
+    prevProps.current = null;
+  }, [currentScreen]);
   useEffect(() => {
     if (prevProps.current) {
       const changedProps = {};
@@ -46,4 +50,4 @@ export {
   useRenderMonitor,
   setupRenderTracking
 };
-//# sourceMappingURL=chunk-5T2SK47N.mjs.map
+//# sourceMappingURL=chunk-QYENO6IE.mjs.map

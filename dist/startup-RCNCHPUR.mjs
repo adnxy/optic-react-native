@@ -1,6 +1,6 @@
 import {
   useMetricsStore
-} from "./chunk-RTAHOVXP.mjs";
+} from "./chunk-PY6A55FM.mjs";
 
 // src/metrics/startup.ts
 if (global.__OPTIC_APP_START_TIME__ === void 0) {
@@ -17,4 +17,4 @@ function trackStartupTime() {
 export {
   trackStartupTime
 };
-//# sourceMappingURL=startup-34QXCTCJ.mjs.map
+//# sourceMappingURL=startup-RCNCHPUR.mjs.map
