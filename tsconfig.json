@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+      "target": "ES2017",
+      "module": "ESNext",
+      "lib": ["ES2017", "DOM"],
+      "jsx": "react",
+      "declaration": true,
+      "declarationMap": true,
+      "sourceMap": true,
+      "outDir": "dist",
+      "rootDir": "src",
+      "strict": true,
+      "moduleResolution": "node",
+      "allowSyntheticDefaultImports": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "forceConsistentCasingInFileNames": true
+    },
+    "include": ["src"],
+    "exclude": ["node_modules", "dist"]
+  }
