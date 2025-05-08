@@ -1,10 +1,10 @@
 import {
   useRenderMonitor
-} from "./chunk-5T2SK47N.mjs";
+} from "./chunk-QYENO6IE.mjs";
 import {
   __spreadValues,
   useMetricsStore
-} from "./chunk-RTAHOVXP.mjs";
+} from "./chunk-PY6A55FM.mjs";
 
 // src/core/initOptic.ts
 async function InitOptic(options = {}) {
@@ -14,17 +14,17 @@ async function InitOptic(options = {}) {
     reRenders = true
   } = options;
   if (tti) {
-    const { trackTTI } = await import("./tti-ZH5VY4AJ.mjs");
+    const { trackTTI } = await import("./tti-7ZG7XKYX.mjs");
     trackTTI();
     console.log("[Optic] TTI tracking enabled");
   }
   if (startup) {
-    const { trackStartupTime } = await import("./startup-34QXCTCJ.mjs");
+    const { trackStartupTime } = await import("./startup-RCNCHPUR.mjs");
     trackStartupTime();
     console.log("[Optic] Startup tracking enabled");
   }
   if (reRenders) {
-    const { setupRenderTracking } = await import("./reRenders-XK6L5BGD.mjs");
+    const { setupRenderTracking } = await import("./reRenders-34ALAVB2.mjs");
     setupRenderTracking();
     console.log("[Optic] Re-render tracking enabled");
   }
@@ -35,10 +35,27 @@ import React, { useRef, useState } from "react";
 import { View, Text, StyleSheet, PanResponder, Animated, Dimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 var { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+var METRICS_THRESHOLDS = {
+  TTI: {
+    good: 20,
+    warning: 50
+  },
+  STARTUP: {
+    good: 150,
+    warning: 200
+  }
+};
+var getMetricColor = (value, type) => {
+  if (value === null) return "#fff";
+  const thresholds = METRICS_THRESHOLDS[type];
+  if (value <= thresholds.good) return "#4CAF50";
+  if (value <= thresholds.warning) return "#FFC107";
+  return "#F44336";
+};
 var Overlay = () => {
-  const tti = useMetricsStore((state) => state.tti);
+  const currentScreen = useMetricsStore((state) => state.currentScreen);
+  const screens = useMetricsStore((state) => state.screens);
   const startupTime = useMetricsStore((state) => state.startupTime);
-  const reRenderCounts = useMetricsStore((state) => state.reRenderCounts);
   const pan = useRef(new Animated.ValueXY()).current;
   const [position, setPosition] = useState({ x: SCREEN_WIDTH - 200, y: 100 });
   const panResponder = useRef(
@@ -61,7 +78,7 @@ var Overlay = () => {
       }
     })
   ).current;
-  const reRenderList = Object.entries(reRenderCounts).map(([name, count]) => /* @__PURE__ */ React.createElement(Text, { style: styles.metric, key: name }, name, ": ", count));
+  const currentScreenMetrics = currentScreen ? screens[currentScreen] : null;
   return /* @__PURE__ */ React.createElement(SafeAreaView, { style: styles.safeArea, pointerEvents: "box-none" }, /* @__PURE__ */ React.createElement(
     Animated.View,
     __spreadValues({
@@ -78,11 +95,26 @@ var Overlay = () => {
       ]
     }, panResponder.panHandlers),
     /* @__PURE__ */ React.createElement(View, { style: styles.dragHandle }),
-    /* @__PURE__ */ React.createElement(Text, { style: styles.text }, "[useoptic] Perf Overlay"),
-    /* @__PURE__ */ React.createElement(Text, { style: styles.metric }, "TTI: ", tti !== null ? `${tti}ms` : "...", " "),
-    /* @__PURE__ */ React.createElement(Text, { style: styles.metric }, "Startup: ", startupTime !== null ? `${startupTime}ms` : "...", " "),
-    /* @__PURE__ */ React.createElement(Text, { style: styles.metric }, "Re-renders:"),
-    reRenderList
+    /* @__PURE__ */ React.createElement(View, { style: styles.header }, /* @__PURE__ */ React.createElement(Text, { style: styles.text }, "App Performance"), /* @__PURE__ */ React.createElement(Text, { style: styles.screenName }, currentScreen || "No Screen")),
+    /* @__PURE__ */ React.createElement(View, { style: styles.metricsContainer }, /* @__PURE__ */ React.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React.createElement(Text, { style: styles.metricLabel }, "TTI:"), /* @__PURE__ */ React.createElement(
+      Text,
+      {
+        style: [
+          styles.metricValue,
+          { color: getMetricColor((currentScreenMetrics == null ? void 0 : currentScreenMetrics.tti) || null, "TTI") }
+        ]
+      },
+      (currentScreenMetrics == null ? void 0 : currentScreenMetrics.tti) !== null ? `${currentScreenMetrics == null ? void 0 : currentScreenMetrics.tti}ms` : "..."
+    )), /* @__PURE__ */ React.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React.createElement(Text, { style: styles.metricLabel }, "Startup:"), /* @__PURE__ */ React.createElement(
+      Text,
+      {
+        style: [
+          styles.metricValue,
+          { color: getMetricColor(startupTime, "STARTUP") }
+        ]
+      },
+      startupTime !== null ? `${startupTime}ms` : "..."
+    )), currentScreenMetrics && Object.keys(currentScreenMetrics.reRenderCounts).length > 0 && /* @__PURE__ */ React.createElement(View, { style: styles.reRendersContainer }, /* @__PURE__ */ React.createElement(Text, { style: styles.metricLabel }, "Re-renders:"), Object.entries(currentScreenMetrics.reRenderCounts).map(([name, count]) => /* @__PURE__ */ React.createElement(View, { key: name, style: styles.reRenderRow }, /* @__PURE__ */ React.createElement(Text, { style: styles.reRenderName }, name), /* @__PURE__ */ React.createElement(Text, { style: styles.reRenderCount }, count)))))
   ));
 };
 var styles = StyleSheet.create({
@@ -96,46 +128,149 @@ var styles = StyleSheet.create({
   },
   overlay: {
     position: "absolute",
-    backgroundColor: "rgba(20, 20, 20, 0.85)",
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 8,
+    backgroundColor: "rgba(33, 33, 33, 0.95)",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     zIndex: 9999,
     elevation: 20,
-    minWidth: 180,
+    minWidth: 200,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: 2
+      height: 4
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65
   },
   dragHandle: {
     width: 40,
     height: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     borderRadius: 2,
     alignSelf: "center",
-    marginBottom: 8
+    marginBottom: 12
+  },
+  header: {
+    marginBottom: 12
   },
   text: {
     color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
-    letterSpacing: 0.5,
-    marginBottom: 4
+    fontWeight: "600",
+    fontSize: 16,
+    letterSpacing: 0.5
   },
-  metric: {
+  screenName: {
+    color: "#fff",
+    fontSize: 13,
+    opacity: 0.7,
+    marginTop: 2
+  },
+  metricsContainer: {
+    gap: 8
+  },
+  metricRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center"
+  },
+  metricLabel: {
+    color: "#fff",
+    fontSize: 13,
+    opacity: 0.7
+  },
+  metricValue: {
+    fontSize: 13,
+    fontWeight: "500"
+  },
+  reRendersContainer: {
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 255, 255, 0.1)",
+    paddingTop: 8
+  },
+  reRenderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 4
+  },
+  reRenderName: {
     color: "#fff",
     fontSize: 12,
-    marginBottom: 2
+    opacity: 0.7
+  },
+  reRenderCount: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "500"
   }
 });
-var Overlay_default = Overlay;
+
+// src/metrics/screen.ts
+import { useEffect, useRef as useRef2, useCallback } from "react";
+if (!global.__OPTIC_SCREEN_TTI_CAPTURED__) {
+  global.__OPTIC_SCREEN_TTI_CAPTURED__ = {};
+}
+if (!global.__OPTIC_SCREEN_TTI_START__) {
+  global.__OPTIC_SCREEN_TTI_START__ = {};
+}
+function useScreenMetrics(screenName) {
+  console.log(`[useoptic] useScreenMetrics called for "${screenName}"`);
+  const setCurrentScreen = useMetricsStore((state) => state.setCurrentScreen);
+  const setTTI = useMetricsStore((state) => state.setTTI);
+  const screens = useMetricsStore((state) => state.screens);
+  const prevScreenRef = useRef2(null);
+  const mountedRef = useRef2(true);
+  const handleScreenChange = useCallback(() => {
+    console.log(`[useoptic] handleScreenChange called for "${screenName}"`);
+    const isNewScreen = prevScreenRef.current !== screenName;
+    if (isNewScreen) {
+      console.log(`[useoptic] New screen detected: "${screenName}"`);
+      prevScreenRef.current = screenName;
+      global.__OPTIC_SCREEN_TTI_CAPTURED__[screenName] = false;
+      setCurrentScreen(screenName);
+      console.log(`[useoptic] Starting TTI measurement for "${screenName}"`);
+    }
+  }, [screenName, setCurrentScreen]);
+  useEffect(() => {
+    console.log(`[useoptic] Screen change effect triggered for "${screenName}"`);
+    handleScreenChange();
+  }, [handleScreenChange]);
+  useEffect(() => {
+    console.log(`[useoptic] TTI measurement effect triggered for "${screenName}"`);
+    mountedRef.current = true;
+    if (!global.__OPTIC_SCREEN_TTI_CAPTURED__[screenName]) {
+      console.log(`[useoptic] Measuring TTI for "${screenName}"`);
+      global.__OPTIC_SCREEN_TTI_CAPTURED__[screenName] = true;
+      global.__OPTIC_SCREEN_TTI_START__[screenName] = Date.now();
+      setTTI(null);
+      requestAnimationFrame(() => {
+        if (mountedRef.current) {
+          const start = global.__OPTIC_SCREEN_TTI_START__[screenName];
+          const tti = Date.now() - start;
+          console.log(`[useoptic] Setting TTI for "${screenName}": ${tti}ms`);
+          setTTI(tti);
+        }
+      });
+    } else {
+      console.log(`[useoptic] TTI already captured for "${screenName}"`);
+    }
+    return () => {
+      console.log(`[useoptic] Cleaning up TTI measurement for "${screenName}"`);
+      mountedRef.current = false;
+      if (prevScreenRef.current !== screenName) {
+        if (screens[screenName]) {
+          setTTI(null);
+        }
+      }
+    };
+  }, [screenName, setTTI, screens]);
+}
 export {
   InitOptic,
-  Overlay_default as Overlay,
-  useRenderMonitor
+  Overlay,
+  useRenderMonitor,
+  useScreenMetrics
 };
 //# sourceMappingURL=index.mjs.map

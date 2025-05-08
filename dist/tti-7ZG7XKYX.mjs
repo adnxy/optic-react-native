@@ -1,6 +1,6 @@
 import {
   useMetricsStore
-} from "./chunk-RTAHOVXP.mjs";
+} from "./chunk-PY6A55FM.mjs";
 
 // src/metrics/tti.ts
 function trackTTI() {
@@ -16,4 +16,4 @@ function trackTTI() {
 export {
   trackTTI
 };
-//# sourceMappingURL=tti-ZH5VY4AJ.mjs.map
+//# sourceMappingURL=tti-7ZG7XKYX.mjs.map

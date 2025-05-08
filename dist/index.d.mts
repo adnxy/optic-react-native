@@ -20,4 +20,14 @@ declare const Overlay: React.FC;
  */
 declare function useRenderMonitor<T extends Record<string, any>>(componentName: string, props: T): void;
 
-export { InitOptic, Overlay, useRenderMonitor };
+declare global {
+    var __OPTIC_SCREEN_TTI_CAPTURED__: Record<string, boolean>;
+    var __OPTIC_SCREEN_TTI_START__: Record<string, number>;
+}
+/**
+ * Hook to track screen performance metrics.
+ * @param screenName Name of the current screen
+ */
+declare function useScreenMetrics(screenName: string): void;
+
+export { InitOptic, Overlay, useRenderMonitor, useScreenMetrics };

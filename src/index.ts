@@ -1,3 +1,4 @@
 export { InitOptic } from './core/initOptic';
-export { default as Overlay } from './overlay/Overlay';
+export { Overlay } from './overlay/Overlay';
 export { useRenderMonitor } from './metrics/reRenders';
+export { useScreenMetrics } from './metrics/screen';
