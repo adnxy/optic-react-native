@@ -16,15 +16,18 @@ export async function InitOptic(options: InitOpticOptions = {}) {
   } = options;
 
   if (tti) {
-    await import('../metrics/tti');
+    const { trackTTI } = await import('../metrics/tti');
+    trackTTI();
     console.log('[Optic] TTI tracking enabled');
   }
   if (startup) {
-    await import('../metrics/startup');
+    const { trackStartupTime } = await import('../metrics/startup');
+    trackStartupTime();
     console.log('[Optic] Startup tracking enabled');
   }
   if (reRenders) {
-    await import('../metrics/reRenders');
+    const { setupRenderTracking } = await import('../metrics/reRenders');
+    setupRenderTracking();
     console.log('[Optic] Re-render tracking enabled');
   }
 }

@@ -1,4 +1,7 @@
-import { useEffect, useRef } from 'react';
+import * as React from 'react';
+import { useMetricsStore } from '../store/metricsStore';
+
+const { useEffect, useRef } = React;
 
 /**
  * Hook to monitor and log prop changes for a component.
@@ -9,7 +12,13 @@ export function useRenderMonitor<T extends Record<string, any>>(
   componentName: string,
   props: T
 ) {
+  if (!React) {
+    console.error('[useoptic] React is not available. Make sure React is properly imported.');
+    return;
+  }
+
   const prevProps = useRef<T | null>(null);
+  const incrementReRender = useMetricsStore((state) => state.incrementReRender);
 
   useEffect(() => {
     if (prevProps.current) {
@@ -23,6 +32,7 @@ export function useRenderMonitor<T extends Record<string, any>>(
         }
       }
       if (Object.keys(changedProps).length > 0) {
+        incrementReRender(componentName);
         console.log(
           `[useoptic] ${componentName} re-rendered. Changed props:`,
           changedProps

@@ -7,4 +7,8 @@ export default defineConfig({
   outDir: 'dist',
   sourcemap: true,
   clean: true,
+  external: ['react', 'react-native'],
+  esbuildOptions(options) {
+    options.jsx = 'automatic';
+  },
 });

@@ -120,8 +120,13 @@ __export(reRenders_exports, {
   useRenderMonitor: () => useRenderMonitor
 });
 function useRenderMonitor(componentName, props) {
-  const prevProps = (0, import_react.useRef)(null);
-  (0, import_react.useEffect)(() => {
+  if (!React) {
+    console.error("[useoptic] React is not available. Make sure React is properly imported.");
+    return;
+  }
+  const prevProps = useRef(null);
+  const incrementReRender = useMetricsStore((state) => state.incrementReRender);
+  useEffect(() => {
     if (prevProps.current) {
       const changedProps = {};
       for (const key of Object.keys(props)) {
@@ -133,6 +138,7 @@ function useRenderMonitor(componentName, props) {
         }
       }
       if (Object.keys(changedProps).length > 0) {
+        incrementReRender(componentName);
         console.log(
           `[useoptic] ${componentName} re-rendered. Changed props:`,
           changedProps
@@ -148,11 +154,13 @@ function setupRenderTracking() {
     console.log("[useoptic] Re-render tracking enabled");
   }
 }
-var import_react, renderTrackingSetup;
+var React, useEffect, useRef, renderTrackingSetup;
 var init_reRenders = __esm({
   "src/metrics/reRenders.ts"() {
     "use strict";
-    import_react = require("react");
+    React = __toESM(require("react"));
+    init_metricsStore();
+    ({ useEffect, useRef } = React);
     renderTrackingSetup = false;
   }
 });
@@ -174,42 +182,111 @@ async function InitOptic(options = {}) {
     reRenders = true
   } = options;
   if (tti) {
-    await Promise.resolve().then(() => (init_tti(), tti_exports));
+    const { trackTTI: trackTTI2 } = await Promise.resolve().then(() => (init_tti(), tti_exports));
+    trackTTI2();
     console.log("[Optic] TTI tracking enabled");
   }
   if (startup) {
-    await Promise.resolve().then(() => (init_startup(), startup_exports));
+    const { trackStartupTime: trackStartupTime2 } = await Promise.resolve().then(() => (init_startup(), startup_exports));
+    trackStartupTime2();
     console.log("[Optic] Startup tracking enabled");
   }
   if (reRenders) {
-    await Promise.resolve().then(() => (init_reRenders(), reRenders_exports));
+    const { setupRenderTracking: setupRenderTracking2 } = await Promise.resolve().then(() => (init_reRenders(), reRenders_exports));
+    setupRenderTracking2();
     console.log("[Optic] Re-render tracking enabled");
   }
 }
 
 // src/overlay/Overlay.tsx
-var import_react2 = __toESM(require("react"));
+var import_react = __toESM(require("react"));
 var import_react_native = require("react-native");
 init_metricsStore();
+var import_react_native_safe_area_context = require("react-native-safe-area-context");
+var { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = import_react_native.Dimensions.get("window");
 var Overlay = () => {
   const tti = useMetricsStore((state) => state.tti);
   const startupTime = useMetricsStore((state) => state.startupTime);
   const reRenderCounts = useMetricsStore((state) => state.reRenderCounts);
-  const reRenderList = Object.entries(reRenderCounts).map(([name, count]) => /* @__PURE__ */ import_react2.default.createElement(import_react_native.Text, { style: styles.metric, key: name }, name, ": ", count));
-  return /* @__PURE__ */ import_react2.default.createElement(import_react_native.View, { style: styles.overlay, pointerEvents: "none" }, /* @__PURE__ */ import_react2.default.createElement(import_react_native.Text, { style: styles.text }, "[useoptic] Perf Overlay"), /* @__PURE__ */ import_react2.default.createElement(import_react_native.Text, { style: styles.metric }, "TTI: ", tti !== null ? `${tti}ms` : "...", " "), /* @__PURE__ */ import_react2.default.createElement(import_react_native.Text, { style: styles.metric }, "Startup: ", startupTime !== null ? `${startupTime}ms` : "...", " "), /* @__PURE__ */ import_react2.default.createElement(import_react_native.Text, { style: styles.metric }, "Re-renders:"), reRenderList);
+  const pan = (0, import_react.useRef)(new import_react_native.Animated.ValueXY()).current;
+  const [position, setPosition] = (0, import_react.useState)({ x: SCREEN_WIDTH - 200, y: 100 });
+  const panResponder = (0, import_react.useRef)(
+    import_react_native.PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gesture) => {
+        const newX = position.x + gesture.dx;
+        const newY = position.y + gesture.dy;
+        const boundedX = Math.max(0, Math.min(newX, SCREEN_WIDTH - 180));
+        const boundedY = Math.max(0, Math.min(newY, SCREEN_HEIGHT - 200));
+        pan.setValue({ x: boundedX - position.x, y: boundedY - position.y });
+      },
+      onPanResponderRelease: (_, gesture) => {
+        const newX = position.x + gesture.dx;
+        const newY = position.y + gesture.dy;
+        const boundedX = Math.max(0, Math.min(newX, SCREEN_WIDTH - 180));
+        const boundedY = Math.max(0, Math.min(newY, SCREEN_HEIGHT - 200));
+        setPosition({ x: boundedX, y: boundedY });
+        pan.setValue({ x: 0, y: 0 });
+      }
+    })
+  ).current;
+  const reRenderList = Object.entries(reRenderCounts).map(([name, count]) => /* @__PURE__ */ import_react.default.createElement(import_react_native.Text, { style: styles.metric, key: name }, name, ": ", count));
+  return /* @__PURE__ */ import_react.default.createElement(import_react_native_safe_area_context.SafeAreaView, { style: styles.safeArea, pointerEvents: "box-none" }, /* @__PURE__ */ import_react.default.createElement(
+    import_react_native.Animated.View,
+    __spreadValues({
+      style: [
+        styles.overlay,
+        {
+          transform: [
+            { translateX: pan.x },
+            { translateY: pan.y }
+          ],
+          left: position.x,
+          top: position.y
+        }
+      ]
+    }, panResponder.panHandlers),
+    /* @__PURE__ */ import_react.default.createElement(import_react_native.View, { style: styles.dragHandle }),
+    /* @__PURE__ */ import_react.default.createElement(import_react_native.Text, { style: styles.text }, "[useoptic] Perf Overlay"),
+    /* @__PURE__ */ import_react.default.createElement(import_react_native.Text, { style: styles.metric }, "TTI: ", tti !== null ? `${tti}ms` : "...", " "),
+    /* @__PURE__ */ import_react.default.createElement(import_react_native.Text, { style: styles.metric }, "Startup: ", startupTime !== null ? `${startupTime}ms` : "...", " "),
+    /* @__PURE__ */ import_react.default.createElement(import_react_native.Text, { style: styles.metric }, "Re-renders:"),
+    reRenderList
+  ));
 };
 var styles = import_react_native.StyleSheet.create({
+  safeArea: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: "box-none"
+  },
   overlay: {
     position: "absolute",
-    top: 24,
-    right: 16,
     backgroundColor: "rgba(20, 20, 20, 0.85)",
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderRadius: 8,
     zIndex: 9999,
     elevation: 20,
-    minWidth: 180
+    minWidth: 180,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 8
   },
   text: {
     color: "#fff",
