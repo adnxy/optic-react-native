@@ -2,6 +2,7 @@
 
 A lightweight, zero-configuration performance monitoring tool for React Native applications. Track Time to Interactive (TTI), startup time, component re-renders, and network requests in real-time with a convenient overlay.
 
+
 ![npm version](https://img.shields.io/npm/v/@useoptic/react-native)
 ![license](https://img.shields.io/npm/l/@useoptic/react-native)
 ![React Native](https://img.shields.io/badge/React%20Native-%3E%3D0.70.0-blue)
@@ -17,9 +18,9 @@ A lightweight, zero-configuration performance monitoring tool for React Native a
 - 🪶 Lightweight with zero dependencies
 - 📦 TypeScript support out of the box
 
+## Demo
 
-<img src="https://github.com/user-attachments/assets/f4b2d900-c94d-4191-9768-2328dafeeca1" width="350" alt="Optic Performance Monitor Screenshot" />
-
+<img src="https://github.com/user-attachments/assets/ff4fe58f-7511-49a7-b33e-87d41388cac6" width="350" alt="Optic Performance Monitor Screenshot" />
 
 ## Installation
 
