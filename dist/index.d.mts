@@ -1,17 +1,24 @@
-import React from 'react';
+import * as react from 'react';
+import react__default from 'react';
 
-type InitOpticOptions = {
+interface InitOpticOptions {
+    rootComponent?: React.ComponentType<any>;
+    reRenders?: boolean;
+    network?: boolean;
     tti?: boolean;
     startup?: boolean;
-    reRenders?: boolean;
+    fps?: boolean;
+}
+declare const initOptic: (options?: InitOpticOptions) => {
+    rootComponent: react.ComponentType<any> | undefined;
+    reRenders: boolean;
+    network: boolean;
+    tti: boolean;
+    startup: boolean;
+    fps: boolean;
 };
-/**
- * Initializes Optic performance logging systems based on options.
- * All features are enabled by default.
- */
-declare function InitOptic(options?: InitOpticOptions): Promise<void>;
 
-declare const Overlay: React.FC;
+declare const Overlay: react__default.FC;
 
 /**
  * Hook to monitor and log prop changes for a component.
@@ -30,4 +37,4 @@ declare global {
  */
 declare function useScreenMetrics(screenName: string): void;
 
-export { InitOptic, Overlay, useRenderMonitor, useScreenMetrics };
+export { Overlay, initOptic, useRenderMonitor, useScreenMetrics };

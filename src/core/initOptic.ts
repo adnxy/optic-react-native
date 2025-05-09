@@ -1,33 +1,62 @@
-export type InitOpticOptions = {
+import { initRenderTracking, setRootComponent } from '../metrics/globalRenderTracking';
+import { initNetworkTracking } from '../metrics/network';
+import { useMetricsStore } from '../store/metricsStore';
+import { trackStartupTime } from '../metrics/startup';
+import { startFPSTracking } from '../metrics/fps';
+
+export interface InitOpticOptions {
+  rootComponent?: React.ComponentType<any>;
+  reRenders?: boolean;
+  network?: boolean;
   tti?: boolean;
   startup?: boolean;
-  reRenders?: boolean;
-};
+  fps?: boolean;
+}
 
-/**
- * Initializes Optic performance logging systems based on options.
- * All features are enabled by default.
- */
-export async function InitOptic(options: InitOpticOptions = {}) {
-  const {
+export const initOptic = (options: InitOpticOptions = {}) => {
+  const { 
+    rootComponent, 
+    reRenders = false, 
+    network = false,
     tti = true,
     startup = true,
-    reRenders = true,
+    fps = true
   } = options;
 
-  if (tti) {
-    const { trackTTI } = await import('../metrics/tti');
-    trackTTI();
-    console.log('[Optic] TTI tracking enabled');
+  // Set the root component if provided
+  if (rootComponent) {
+    setRootComponent(rootComponent);
   }
-  if (startup) {
-    const { trackStartupTime } = await import('../metrics/startup');
-    trackStartupTime();
-    console.log('[Optic] Startup tracking enabled');
-  }
+
+  // Initialize render tracking if enabled
   if (reRenders) {
-    const { setupRenderTracking } = await import('../metrics/reRenders');
-    setupRenderTracking();
-    console.log('[Optic] Re-render tracking enabled');
+    initRenderTracking();
   }
-}
+
+  // Initialize network tracking if enabled
+  if (network) {
+    initNetworkTracking();
+  }
+
+  // Track startup time if enabled
+  if (startup) {
+    trackStartupTime();
+  }
+
+  // Start FPS tracking if enabled
+  if (fps) {
+    startFPSTracking();
+  }
+
+  // Initialize metrics store
+  useMetricsStore.getState();
+
+  return {
+    rootComponent,
+    reRenders,
+    network,
+    tti,
+    startup,
+    fps
+  };
+};
