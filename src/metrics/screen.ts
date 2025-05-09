@@ -56,7 +56,7 @@ export function useScreenMetrics(screenName: string) {
       console.log(`[useoptic] Measuring TTI for "${screenName}"`);
       global.__OPTIC_SCREEN_TTI_CAPTURED__[screenName] = true;
       global.__OPTIC_SCREEN_TTI_START__[screenName] = Date.now();
-      setTTI(null);
+      setTTI(screenName, null);
 
       // Use requestAnimationFrame to ensure we measure after the screen is rendered
       requestAnimationFrame(() => {
@@ -64,7 +64,7 @@ export function useScreenMetrics(screenName: string) {
           const start = global.__OPTIC_SCREEN_TTI_START__[screenName];
           const tti = Date.now() - start;
           console.log(`[useoptic] Setting TTI for "${screenName}": ${tti}ms`);
-          setTTI(tti);
+          setTTI(screenName, tti);
         }
       });
     } else {
@@ -78,7 +78,7 @@ export function useScreenMetrics(screenName: string) {
       // Only reset TTI if we're actually unmounting the screen
       if (prevScreenRef.current !== screenName) {
         if (screens[screenName]) {
-          setTTI(null);
+          setTTI(screenName, null);
         }
       }
     };
