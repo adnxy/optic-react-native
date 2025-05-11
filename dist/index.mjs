@@ -114,6 +114,10 @@ var useMetricsStore = create((set, get) => ({
     }));
   }
 }));
+var opticEnabled = true;
+function setOpticEnabled(value) {
+  opticEnabled = value;
+}
 
 // src/metrics/globalRenderTracking.ts
 var renderCounts = {};
@@ -172,14 +176,7 @@ var NETWORK_THRESHOLDS = {
 };
 var originalFetch = null;
 var initNetworkTracking = () => {
-  if (originalFetch !== null) {
-    console.log("[useoptic] Network tracking already initialized");
-    return;
-  }
-  if (!global.fetch) {
-    console.error("[useoptic] Global fetch is not available");
-    return;
-  }
+  if (originalFetch !== null) return;
   originalFetch = global.fetch;
   global.fetch = async function(input, init) {
     const startTime = performance.now();
@@ -214,7 +211,7 @@ var initNetworkTracking = () => {
       throw error;
     }
   };
-  console.log("[useoptic] Network tracking initialized successfully");
+  console.log("[useoptic] Network tracking started");
 };
 var getNetworkColor = (duration) => {
   if (duration === null || duration === void 0) return "#666666";
@@ -280,7 +277,12 @@ function getFPSColor(fps) {
 }
 
 // src/core/initOptic.ts
-var initOptic = (options = {}) => {
+function initOptic(options = {}) {
+  const { enabled = true, onMetricsLogged } = options;
+  setOpticEnabled(enabled);
+  if (!enabled) {
+    return;
+  }
   const {
     rootComponent,
     reRenders = false,
@@ -305,6 +307,20 @@ var initOptic = (options = {}) => {
     startFPSTracking();
   }
   useMetricsStore.getState();
+  if (onMetricsLogged) {
+    const unsubscribe = useMetricsStore.subscribe((metrics) => {
+      onMetricsLogged(metrics);
+    });
+    return {
+      rootComponent,
+      reRenders,
+      network,
+      tti,
+      startup,
+      fps,
+      unsubscribe
+    };
+  }
   return {
     rootComponent,
     reRenders,
@@ -313,12 +329,14 @@ var initOptic = (options = {}) => {
     startup,
     fps
   };
-};
+}
 
 // src/overlay/Overlay.tsx
 import React2, { useRef, useState } from "react";
-import { View, Text, StyleSheet, PanResponder, Animated, Dimensions, TouchableOpacity, Clipboard } from "react-native";
+import { View, Text, StyleSheet, PanResponder, Animated, Dimensions, TouchableOpacity, Clipboard, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+var minimizeImageUrl = "https://img.icons8.com/material-rounded/24/ffffff/minus.png";
+var maximizeImageUrl = "https://img.icons8.com/ios-filled/50/ffffff/full-screen.png";
 var { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 var METRICS_THRESHOLDS = {
   TTI: {
@@ -337,7 +355,14 @@ var getMetricColor = (value, type) => {
   if (value <= thresholds.warning) return "#FFC107";
   return "#F44336";
 };
+var getStatusColor = (status) => {
+  if (status >= 200 && status < 300) return "#4CAF50";
+  if (status >= 400) return "#F44336";
+  return "#FFC107";
+};
 var Overlay = () => {
+  console.log("opticEnabled", opticEnabled);
+  if (!opticEnabled) return null;
   const currentScreen = useMetricsStore((state) => state.currentScreen);
   const screens = useMetricsStore((state) => state.screens);
   const startupTime = useMetricsStore((state) => state.startupTime);
@@ -408,20 +433,19 @@ var Overlay = () => {
       ]
     }, panResponder.panHandlers),
     /* @__PURE__ */ React2.createElement(View, { style: styles.dragHandle }),
-    /* @__PURE__ */ React2.createElement(View, { style: styles.header }, /* @__PURE__ */ React2.createElement(View, { style: styles.headerTop }, /* @__PURE__ */ React2.createElement(Text, { style: styles.text }, "\u{1F50D} Performance Metrics"), /* @__PURE__ */ React2.createElement(View, { style: styles.headerButtons }, /* @__PURE__ */ React2.createElement(
+    /* @__PURE__ */ React2.createElement(View, { style: styles.header }, /* @__PURE__ */ React2.createElement(View, { style: styles.headerTop }, /* @__PURE__ */ React2.createElement(Text, { style: styles.text }, "Performance Metrics"), /* @__PURE__ */ React2.createElement(View, { style: styles.headerButtons }, /* @__PURE__ */ React2.createElement(
       TouchableOpacity,
       {
-        style: styles.iconButton,
-        onPress: handleCopyMetrics
-      },
-      /* @__PURE__ */ React2.createElement(Text, { style: styles.iconButtonText }, "\u{1F4CB}")
-    ), /* @__PURE__ */ React2.createElement(
-      TouchableOpacity,
-      {
-        style: styles.iconButton,
+        style: [styles.iconButton],
         onPress: () => setIsMinimized(!isMinimized)
       },
-      /* @__PURE__ */ React2.createElement(Text, { style: styles.iconButtonText }, isMinimized ? "\u2B06\uFE0F" : "\u2B07\uFE0F")
+      /* @__PURE__ */ React2.createElement(
+        Image,
+        {
+          source: { uri: isMinimized ? maximizeImageUrl : minimizeImageUrl },
+          style: styles.icon
+        }
+      )
     ))), /* @__PURE__ */ React2.createElement(Text, { style: styles.screenName }, currentScreen || "No Screen")),
     !isMinimized && /* @__PURE__ */ React2.createElement(View, { style: styles.metricsContainer }, /* @__PURE__ */ React2.createElement(View, { style: styles.performanceSection }, /* @__PURE__ */ React2.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React2.createElement(Text, { style: styles.metricLabel }, "FPS"), /* @__PURE__ */ React2.createElement(
       Text,
@@ -432,16 +456,31 @@ var Overlay = () => {
         ]
       },
       fps !== null ? `${fps}` : "..."
-    )), /* @__PURE__ */ React2.createElement(View, { style: styles.divider }), /* @__PURE__ */ React2.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React2.createElement(Text, { style: styles.metricLabel }, "Network Request"), /* @__PURE__ */ React2.createElement(
+    )), /* @__PURE__ */ React2.createElement(View, { style: styles.divider }), /* @__PURE__ */ React2.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React2.createElement(Text, { style: styles.metricLabel }, "Network Request"), /* @__PURE__ */ React2.createElement(View, { style: styles.networkInfo }, latestRequest && /* @__PURE__ */ React2.createElement(React2.Fragment, null, /* @__PURE__ */ React2.createElement(
       Text,
       {
         style: [
           styles.metricValue,
-          { color: getNetworkColor(latestRequest == null ? void 0 : latestRequest.duration) }
+          { color: getNetworkColor(latestRequest.duration) }
         ]
       },
-      latestRequest ? `${Math.round(latestRequest.duration)}ms` : "..."
-    )), /* @__PURE__ */ React2.createElement(View, { style: styles.divider }), /* @__PURE__ */ React2.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React2.createElement(Text, { style: styles.metricLabel }, "TTI"), /* @__PURE__ */ React2.createElement(
+      latestRequest.url.split("/").pop(),
+      " \u2192 ",
+      Math.round(latestRequest.duration),
+      "ms"
+    ), latestRequest.status !== 200 && /* @__PURE__ */ React2.createElement(
+      Text,
+      {
+        style: [
+          styles.statusText,
+          { color: getStatusColor(latestRequest.status) }
+        ]
+      },
+      "Status: ",
+      latestRequest.status,
+      " ",
+      latestRequest.status >= 500 ? "\u{1F534}" : "\u{1F7E0}"
+    )))), /* @__PURE__ */ React2.createElement(View, { style: styles.divider }), /* @__PURE__ */ React2.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React2.createElement(Text, { style: styles.metricLabel }, "TTI"), /* @__PURE__ */ React2.createElement(
       Text,
       {
         style: [
@@ -459,7 +498,8 @@ var Overlay = () => {
         ]
       },
       startupTime !== null ? `${startupTime}ms` : "..."
-    ))), currentScreenMetrics && Object.keys(currentScreenMetrics.reRenderCounts).length > 0 && /* @__PURE__ */ React2.createElement(View, { style: styles.reRendersContainer }, /* @__PURE__ */ React2.createElement(View, { style: styles.divider }), /* @__PURE__ */ React2.createElement(Text, { style: styles.reRendersTitle }, "Re-renders"), Object.entries(currentScreenMetrics.reRenderCounts).map(([name, count], index, array) => /* @__PURE__ */ React2.createElement(React2.Fragment, { key: name }, /* @__PURE__ */ React2.createElement(View, { style: styles.reRenderRow }, /* @__PURE__ */ React2.createElement(Text, { style: styles.reRenderName }, name), /* @__PURE__ */ React2.createElement(View, { style: styles.reRenderCountContainer }, /* @__PURE__ */ React2.createElement(Text, { style: styles.reRenderCount }, count), /* @__PURE__ */ React2.createElement(Text, { style: styles.reRenderCountSuffix }, "x"))), index < array.length - 1 && /* @__PURE__ */ React2.createElement(View, { style: styles.divider })))))
+    ))), currentScreenMetrics && Object.keys(currentScreenMetrics.reRenderCounts).length > 0 && /* @__PURE__ */ React2.createElement(View, { style: styles.reRendersContainer }, /* @__PURE__ */ React2.createElement(View, { style: styles.divider }), /* @__PURE__ */ React2.createElement(Text, { style: styles.reRendersTitle }, "Re-renders"), Object.entries(currentScreenMetrics.reRenderCounts).map(([name, count], index, array) => /* @__PURE__ */ React2.createElement(React2.Fragment, { key: name }, /* @__PURE__ */ React2.createElement(View, { style: styles.reRenderRow }, /* @__PURE__ */ React2.createElement(Text, { style: styles.reRenderName }, name), /* @__PURE__ */ React2.createElement(View, { style: styles.reRenderCountContainer }, /* @__PURE__ */ React2.createElement(Text, { style: styles.reRenderCount }, count), /* @__PURE__ */ React2.createElement(Text, { style: styles.reRenderCountSuffix }, "x"))), index < array.length - 1 && /* @__PURE__ */ React2.createElement(View, { style: styles.divider }))))),
+    /* @__PURE__ */ React2.createElement(View, { style: styles.poweredByContainer }, /* @__PURE__ */ React2.createElement(Text, { style: styles.poweredByText }, "Powered by Optic"))
   ));
 };
 var styles = StyleSheet.create({
@@ -514,15 +554,22 @@ var styles = StyleSheet.create({
   iconButton: {
     padding: 4,
     borderRadius: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.1)"
+    backgroundColor: "rgba(33, 33, 33, 0.95)",
+    width: 24,
+    height: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 10
   },
-  iconButtonText: {
-    fontSize: 16
+  icon: {
+    width: 20,
+    height: 20,
+    resizeMode: "contain"
   },
   text: {
     color: "#fff",
     fontWeight: "600",
-    fontSize: 16,
+    fontSize: 15,
     letterSpacing: 0.5
   },
   screenName: {
@@ -533,16 +580,16 @@ var styles = StyleSheet.create({
     fontStyle: "italic"
   },
   metricsContainer: {
-    gap: 8
+    gap: 4
   },
   performanceSection: {
-    gap: 4
+    gap: 2
   },
   metricRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 4
+    paddingVertical: 1
   },
   metricLabel: {
     color: "#fff",
@@ -554,13 +601,12 @@ var styles = StyleSheet.create({
     fontWeight: "500"
   },
   reRendersContainer: {
-    gap: 4,
-    marginTop: 4
+    gap: 2
   },
   divider: {
     height: 1,
     backgroundColor: "rgba(255, 255, 255, 0.1)",
-    marginVertical: 4
+    marginVertical: 2
   },
   reRendersTitle: {
     color: "#fff",
@@ -572,7 +618,7 @@ var styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 4
+    paddingVertical: 1
   },
   reRenderName: {
     color: "#fff",
@@ -597,6 +643,30 @@ var styles = StyleSheet.create({
     fontSize: 10,
     opacity: 0.7,
     marginLeft: 2
+  },
+  networkInfo: {
+    alignItems: "flex-end",
+    gap: 0
+  },
+  statusText: {
+    fontSize: 12,
+    marginTop: 1
+  },
+  poweredByContainer: {
+    alignSelf: "flex-end",
+    marginTop: 12,
+    marginBottom: -4,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2
+  },
+  poweredByText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "600",
+    opacity: 0.7,
+    letterSpacing: 0.2
   }
 });
 

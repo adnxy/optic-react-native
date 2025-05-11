@@ -1,18 +1,20 @@
 import { create } from 'zustand';
+import { InitOpticOptions } from '../core/initOptic';
 
-interface NetworkRequest {
+export interface NetworkRequest {
   url: string;
   method: string;
   duration: number;
   status: number;
+  [key: string]: any; // for any extra fields
 }
 
-interface ScreenMetrics {
+export interface ScreenMetrics {
   tti: number | null;
   reRenderCounts: Record<string, number>;
 }
 
-interface MetricsState {
+export interface MetricsState {
   currentScreen: string | null;
   screens: Record<string, ScreenMetrics>;
   startupTime: number | null;
@@ -131,3 +133,18 @@ export const useMetricsStore = create<MetricsState>((set, get) => ({
     }));
   },
 }));
+
+export let opticEnabled = true;
+
+export function setOpticEnabled(value: boolean) {
+  opticEnabled = value;
+}
+
+export function initOptic(options: InitOpticOptions = {}) {
+  const { enabled = true, onMetricsLogged } = options;
+  opticEnabled = enabled;
+  if (!enabled) {
+    return;
+  }
+  // ...rest of your logic...
+}

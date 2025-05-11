@@ -107,43 +107,6 @@ import { Overlay } from '@useoptic/react-native';
 <Overlay />
 ```
 
-## Testing Re-renders
-
-### 1. Using the RenderTest Component
-
-```typescript
-import { RenderTest } from '@useoptic/react-native';
-
-const YourScreen = () => {
-  return (
-    <View>
-      <YourContent />
-      <RenderTest />
-    </View>
-  );
-};
-```
-
-The RenderTest component provides:
-- State update testing
-- Network request testing
-- Child component re-render testing
-
-### 2. Testing Network Requests
-
-```typescript
-// Example network request test
-const testNetworkRequest = async () => {
-  try {
-    const response = await fetch('https://api.example.com/data');
-    const data = await response.json();
-    console.log('Response:', data);
-  } catch (error) {
-    console.error('Error:', error);
-  }
-};
-```
-
 ## Metrics Explained
 
 ### Time to Interactive (TTI)
@@ -229,3 +192,69 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE. 
+
+## Optic React Native
+
+### Initialization Options
+
+#### `enabled`
+- **Type:** `boolean`
+- **Default:** `true`
+- **Description:** If set to `false`, disables all metrics and hides the overlay. Useful for turning off performance tracking in production or for specific builds.
+
+#### `onMetricsLogged`
+- **Type:** `(metrics: any) => void`
+- **Description:** Callback function that is called whenever metrics are updated. You can use this to log metrics, send them to an API, or perform custom analytics.
+
+#### Example Usage
+
+```js
+import { initOptic } from '@useoptic/react-native';
+
+initOptic({
+  enabled: true, // Set to false to disable metrics and overlay
+  onMetricsLogged: (metrics) => {
+    // Log metrics or send to your API
+    fetch('https://your-api.com/metrics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(metrics),
+    });
+  },
+  // ...other options
+});
+```
+
+---
+
+For more details on all options, see the API documentation section. 
+
+## Testing Re-render Tracking with `useRenderMonitor`
+
+To test and visualize component re-renders in the overlay, use the `useRenderMonitor` hook in your components. This will increment the re-render count for the component in the metrics overlay.
+
+### Example Usage
+
+```tsx
+import React from 'react';
+import { useRenderMonitor } from '@useoptic/react-native';
+
+export const TestComponent = () => {
+  useRenderMonitor('TestComponent');
+  const [count, setCount] = React.useState(0);
+
+  return (
+    <View>
+      <Text>Render count: {count}</Text>
+      <Button title="Re-render" onPress={() => setCount(count + 1)} />
+    </View>
+  );
+};
+```
+
+- The name you pass to `useRenderMonitor` will appear in the "Re-renders" section of the overlay.
+- Each time the component re-renders, the count will increment in real time.
+
+Add this component to your app and interact with it to see re-render tracking in action in the overlay.
+
+--- 
