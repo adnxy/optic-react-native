@@ -1,9 +1,13 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, PanResponder, Animated, Dimensions, TouchableOpacity, Clipboard } from 'react-native';
+import { View, Text, StyleSheet, PanResponder, Animated, Dimensions, TouchableOpacity, Clipboard, Image } from 'react-native';
 import { useMetricsStore } from '../store/metricsStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getFPSColor } from '../metrics/fps';
 import { getNetworkColor } from '../metrics/network';
+import { opticEnabled } from '../store/metricsStore';
+
+const minimizeImageUrl = 'https://img.icons8.com/material-rounded/24/ffffff/minus.png';
+const maximizeImageUrl = 'https://img.icons8.com/ios-filled/50/ffffff/full-screen.png';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -33,6 +37,9 @@ const getStatusColor = (status: number): string => {
 };
 
 export const Overlay: React.FC = () => {
+  console.log('opticEnabled', opticEnabled);
+  if (!opticEnabled) return null;
+
   const currentScreen = useMetricsStore((state) => state.currentScreen);
   const screens = useMetricsStore((state) => state.screens);
   const startupTime = useMetricsStore((state) => state.startupTime);
@@ -120,21 +127,22 @@ export const Overlay: React.FC = () => {
         <View style={styles.dragHandle} />
         <View style={styles.header}>
           <View style={styles.headerTop}>
-            <Text style={styles.text}>🔍 Performance Metrics</Text>
+            <Text style={styles.text}>Performance Metrics</Text>
             <View style={styles.headerButtons}>
-              <TouchableOpacity 
+              {/* <TouchableOpacity 
                 style={styles.iconButton}
                 onPress={handleCopyMetrics}
               >
                 <Text style={styles.iconButtonText}>📋</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.iconButton}
+              </TouchableOpacity> */}
+              <TouchableOpacity
+                style={[styles.iconButton]}
                 onPress={() => setIsMinimized(!isMinimized)}
               >
-                <Text style={styles.iconButtonText}>
-                  {isMinimized ? '⬆️' : '⬇️'}
-                </Text>
+                <Image
+                  source={{ uri: isMinimized ? maximizeImageUrl : minimizeImageUrl }}
+                  style={styles.icon}
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -162,23 +170,27 @@ export const Overlay: React.FC = () => {
               <View style={styles.metricRow}>
                 <Text style={styles.metricLabel}>Network Request</Text>
                 <View style={styles.networkInfo}>
-                  <Text 
-                    style={[
-                      styles.metricValue,
-                      { color: getNetworkColor(latestRequest?.duration) }
-                    ]}
-                  >
-                    {latestRequest ? `${Math.round(latestRequest.duration)}ms` : '...'}
-                  </Text>
                   {latestRequest && (
-                    <Text 
-                      style={[
-                        styles.statusText,
-                        { color: getStatusColor(latestRequest.status) }
-                      ]}
-                    >
-                      {latestRequest.status === 0 ? 'Failed' : `Status: ${latestRequest.status}`}
-                    </Text>
+                    <>
+                      <Text 
+                        style={[
+                          styles.metricValue,
+                          { color: getNetworkColor(latestRequest.duration) }
+                        ]}
+                      >
+                        {latestRequest.url.split('/').pop()} → {Math.round(latestRequest.duration)}ms
+                      </Text>
+                      {latestRequest.status !== 200 && (
+                        <Text 
+                          style={[
+                            styles.statusText,
+                            { color: getStatusColor(latestRequest.status) }
+                          ]}
+                        >
+                          Status: {latestRequest.status} {latestRequest.status >= 500 ? '🔴' : '🟠'}
+                        </Text>
+                      )}
+                    </>
                   )}
                 </View>
               </View>
@@ -230,6 +242,9 @@ export const Overlay: React.FC = () => {
             )}
           </View>
         )}
+        <View style={styles.poweredByContainer}>
+          <Text style={styles.poweredByText}>Powered by Optic</Text>
+        </View>
       </Animated.View>
     </SafeAreaView>
   );
@@ -287,15 +302,22 @@ const styles = StyleSheet.create({
   iconButton: {
     padding: 4,
     borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(33, 33, 33, 0.95)',
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
   },
-  iconButtonText: {
-    fontSize: 16,
+  icon: {
+    width: 20,
+    height: 20,
+    resizeMode: 'contain',
   },
   text: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: 15,
     letterSpacing: 0.5,
   },
   screenName: {
@@ -306,16 +328,16 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   metricsContainer: {
-    gap: 8,
+    gap: 4,
   },
   performanceSection: {
-    gap: 4,
+    gap: 2,
   },
   metricRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: 1,
   },
   metricLabel: {
     color: '#fff',
@@ -327,13 +349,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   reRendersContainer: {
-    gap: 4,
-    marginTop: 4,
+    gap: 2,
   },
   divider: {
     height: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginVertical: 4,
+    marginVertical: 2,
   },
   reRendersTitle: {
     color: '#fff',
@@ -345,7 +366,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: 1,
   },
   reRenderName: {
     color: '#fff',
@@ -373,9 +394,26 @@ const styles = StyleSheet.create({
   },
   networkInfo: {
     alignItems: 'flex-end',
+    gap: 0,
   },
   statusText: {
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 1,
+  },
+  poweredByContainer: {
+    alignSelf: 'flex-end',
+    marginTop: 12,
+    marginBottom: -4,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  poweredByText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+    opacity: 0.7,
+    letterSpacing: 0.2,
   },
 });
