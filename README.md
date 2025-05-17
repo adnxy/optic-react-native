@@ -1,6 +1,6 @@
 # @useoptic/react-native
 
-A lightweight, zero-configuration performance monitoring tool for React Native applications. Track Time to Interactive (TTI), startup time, component re-renders, and network requests in real-time with a convenient overlay.
+A lightweight performance monitoring tool for React Native applications. Track TTI, startup time, component re-renders, network requests, FPS, and memory usage in real-time.
 
 
 ![npm version](https://img.shields.io/npm/v/@useoptic/react-native)
@@ -14,9 +14,9 @@ A lightweight, zero-configuration performance monitoring tool for React Native a
 - ⏱️ App startup time measurement
 - 🔄 Component re-render monitoring
 - 🌐 Network request tracking
-- 📱 Non-intrusive overlay display
-- 🪶 Lightweight with zero dependencies
-- 📦 TypeScript support out of the box
+- 📈 FPS monitoring
+- 💾 Memory usage tracking
+- 📱 Draggable overlay display
 
 ## Demo
 
@@ -30,21 +30,14 @@ npm install @useoptic/react-native
 yarn add @useoptic/react-native
 ```
 
-## Quick Start
+## Usage
 
-1. Initialize Optic early in your app:
+1. Initialize Optic in your app's entry point:
 
 ```typescript
 import { initOptic } from '@useoptic/react-native';
 
-// In your app's entry point
-initOptic({
-  reRenders: true,
-  network: true,
-  tti: true,
-  startup: true,
-  fps: true
-});
+initOptic()
 ```
 
 2. Add the overlay component:
@@ -52,112 +45,65 @@ initOptic({
 ```typescript
 import { Overlay } from '@useoptic/react-native';
 
-const App = () => {
-  return (
-    <>
-      <YourAppContent />
-      <Overlay />
-    </>
-  );
-};
+const App = () => (
+  <>
+    <YourAppContent />
+    <Overlay />
+  </>
+);
 ```
 
-## API Reference
+## API
 
 ### `initOptic(options?)`
 
-Initialize the performance monitoring system.
-
 ```typescript
 interface InitOpticOptions {
-  rootComponent?: React.ComponentType<any>; // Root component to wrap
-  tti?: boolean;      // Enable TTI tracking (default: true)
-  startup?: boolean;  // Enable startup time tracking (default: true)
-  reRenders?: boolean; // Enable re-render tracking (default: true)
-  network?: boolean;  // Enable network request tracking (default: false)
-  fps?: boolean;     // Enable FPS tracking (default: true)
+  enabled?: boolean;     // Enable/disable all metrics (default: true)
+  tti?: boolean;         // Track TTI (default: true)
+  startup?: boolean;     // Track startup time (default: true)
+  reRenders?: boolean;   // Track re-renders (default: true)
+  network?: boolean;     // Track network requests (default: false)
+  fps?: boolean;         // Track FPS (default: true)
+  memory?: boolean;      // Track memory usage (default: true)
+  onMetricsLogged?: (metrics: any) => void; // Callback for metrics updates
 }
-```
-
-Example:
-```typescript
-initOptic({ 
-  rootComponent: App,
-  tti: true, 
-  startup: true, 
-  reRenders: true,
-  network: true,
-  fps: true 
-});
 ```
 
 ### `Overlay`
 
-A React component that displays performance metrics with the following features:
-- Draggable interface
+A draggable overlay component that displays:
+- TTI and startup time
+- Component re-render counts
+- Network request status and duration
+- FPS with color coding
+- Memory usage
 - Minimizable view
 - Copy metrics to clipboard
-- Color-coded metrics based on performance thresholds
-- Network request status and duration tracking
 
-```typescript
-import { Overlay } from '@useoptic/react-native';
-
-// Add to your app's root
-<Overlay />
-```
-
-## Metrics Explained
-
-### Time to Interactive (TTI)
-Measures the time until your app becomes interactive. Lower values indicate better initial performance.
-
-### Startup Time
-Tracks the duration from app launch to ready state. This helps identify initialization bottlenecks.
-
-### Re-renders
-Monitors component re-render frequency and prop changes. Useful for identifying unnecessary re-renders and optimization opportunities.
+## Metrics Thresholds
 
 ### Network Requests
-Tracks network request performance:
-- Request duration
-- Status codes
-- Success/failure states
-- Color-coded based on performance thresholds:
-  - Green: ≤ 200ms
-  - Yellow: ≤ 500ms
-  - Red: > 500ms
+- 🟢 ≤ 200ms
+- 🟡 ≤ 500ms
+- 🔴 > 500ms
 
-### FPS (Frames Per Second)
-Monitors app frame rate:
-- Real-time FPS display
-- Color-coded based on performance:
-  - Green: ≥ 60 FPS
-  - Yellow: ≥ 30 FPS
-  - Red: < 30 FPS
+### FPS
+- 🟢 ≥ 60 FPS
+- 🟡 ≥ 30 FPS
+- 🔴 < 30 FPS
+
+### Memory Usage
+- 🟢 ≤ 60%
+- 🟡 ≤ 80%
+- 🔴 > 80%
 
 ## Troubleshooting
 
-### Overlay Not Visible
-- Ensure `Overlay` is mounted at the root level of your app
-- Check if any other components might be covering it (z-index issues)
-- Verify that `initOptic()` was called before rendering the overlay
-
-### Missing Metrics
-- Make sure `initOptic()` is called early in your app's lifecycle
-- Check that the feature isn't disabled in the options
-- For re-render tracking, verify `useRenderMonitor` is properly implemented
-
-### Network Requests Not Showing
-- Ensure `network: true` is set in `initOptic` options
-- Check if the fetch API is being intercepted properly
-- Verify that requests are being made after initialization
-
-### Performance Impact
-The library is designed to be lightweight, but if you notice performance issues:
-- Disable features you don't need in `initOptic` options
-- Remove `useRenderMonitor` from frequently updating components
-- Consider using the library only in development builds
+- **Overlay not visible**: Ensure it's mounted at root level and `initOptic()` was called
+- **Missing metrics**: Verify features are enabled in `initOptic` options
+- **Network tracking**: Enable `network: true` in options
+- **Performance impact**: Disable unused features in development
 
 ## Contributing
 
@@ -171,7 +117,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## License
 
-MIT License
+MIT © Optic
 
 Copyright (c) 2024 Optic
 
@@ -240,7 +186,7 @@ import React from 'react';
 import { useRenderMonitor } from '@useoptic/react-native';
 
 export const TestComponent = () => {
-  useRenderMonitor('TestComponent');
+  useRenderMonitor('Home');
   const [count, setCount] = React.useState(0);
 
   return (
