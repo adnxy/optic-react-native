@@ -250,7 +250,6 @@ function withScreenTracking(WrappedComponent) {
   function WithScreenTracking(props) {
     const setCurrentScreen = useMetricsStore((state) => state.setCurrentScreen);
     React2.useEffect(() => {
-      console.log(`[useoptic] Setting current screen to "${screenName}"`);
       setCurrentScreen(screenName);
       return () => setCurrentScreen(null);
     }, [setCurrentScreen]);
@@ -335,8 +334,8 @@ import React4, { useEffect as useEffect2, useRef as useRef2 } from "react";
 
 // src/overlay/Overlay.tsx
 import React3, { useRef, useState } from "react";
-import { View, Text, StyleSheet, PanResponder, Animated, Dimensions, TouchableOpacity, Clipboard, Image } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Text, StyleSheet, PanResponder, Animated, Dimensions, TouchableOpacity, Clipboard, Image, Platform, Linking } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 var minimizeImageUrl = "https://img.icons8.com/material-rounded/24/ffffff/minus.png";
 var maximizeImageUrl = "https://img.icons8.com/ios-filled/50/ffffff/full-screen.png";
 var { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -365,30 +364,31 @@ var getStatusColor = (status) => {
 var Overlay = () => {
   console.log("opticEnabled", opticEnabled);
   if (!opticEnabled) return null;
+  const insets = useSafeAreaInsets();
   const currentScreen = useMetricsStore((state) => state.currentScreen);
   const screens = useMetricsStore((state) => state.screens);
   const startupTime = useMetricsStore((state) => state.startupTime);
   const fps = useMetricsStore((state) => state.fps);
   const networkRequests = useMetricsStore((state) => state.networkRequests);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isNetworkExpanded, setIsNetworkExpanded] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const pan = useRef(new Animated.ValueXY()).current;
-  const [position, setPosition] = useState({ x: SCREEN_WIDTH - 200, y: 100 });
+  const [position, setPosition] = useState({
+    x: (SCREEN_WIDTH - 300) / 2,
+    y: insets.top + 20
+  });
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderMove: (_, gesture) => {
         const newX = position.x + gesture.dx;
         const newY = position.y + gesture.dy;
-        const boundedX = Math.max(0, Math.min(newX, SCREEN_WIDTH - 180));
-        const boundedY = Math.max(0, Math.min(newY, SCREEN_HEIGHT - 200));
-        pan.setValue({ x: boundedX - position.x, y: boundedY - position.y });
-      },
-      onPanResponderRelease: (_, gesture) => {
-        const newX = position.x + gesture.dx;
-        const newY = position.y + gesture.dy;
-        const boundedX = Math.max(0, Math.min(newX, SCREEN_WIDTH - 180));
-        const boundedY = Math.max(0, Math.min(newY, SCREEN_HEIGHT - 200));
+        const boundedX = Math.max(10, Math.min(newX, SCREEN_WIDTH - 290));
+        const boundedY = Math.max(insets.top + 10, Math.min(newY, SCREEN_HEIGHT - 200));
         setPosition({ x: boundedX, y: boundedY });
+      },
+      onPanResponderRelease: () => {
         pan.setValue({ x: 0, y: 0 });
       }
     })
@@ -411,6 +411,9 @@ var Overlay = () => {
     };
     Clipboard.setString(JSON.stringify(metrics, null, 2));
   };
+  const handleOpenWebsite = () => {
+    Linking.openURL("https://useoptic.dev");
+  };
   React3.useEffect(() => {
     if (latestRequest) {
       console.log("[useoptic] Overlay received network request:", {
@@ -420,23 +423,27 @@ var Overlay = () => {
       });
     }
   }, [latestRequest]);
+  const renderCollapsedView = () => /* @__PURE__ */ React3.createElement(View, { style: styles.collapsedContainer }, /* @__PURE__ */ React3.createElement(View, { style: styles.collapsedMetrics }, /* @__PURE__ */ React3.createElement(Text, { style: styles.collapsedMetric }, "\u26A1 ", currentTTI !== null ? `${currentTTI}ms` : "..."), /* @__PURE__ */ React3.createElement(Text, { style: styles.collapsedMetric }, "\u{1F680} ", startupTime !== null ? `${startupTime}ms` : "..."), /* @__PURE__ */ React3.createElement(Text, { style: styles.collapsedMetric }, "\u{1F3AE} ", fps !== null ? `${fps}` : "...")));
   return /* @__PURE__ */ React3.createElement(SafeAreaView, { style: styles.safeArea, pointerEvents: "box-none" }, /* @__PURE__ */ React3.createElement(
     Animated.View,
     __spreadValues({
       style: [
         styles.overlay,
+        isCollapsed ? styles.collapsedOverlay : null,
         {
-          transform: [
-            { translateX: pan.x },
-            { translateY: pan.y }
-          ],
           left: position.x,
           top: position.y
         }
       ]
     }, panResponder.panHandlers),
-    /* @__PURE__ */ React3.createElement(View, { style: styles.dragHandle }),
-    /* @__PURE__ */ React3.createElement(View, { style: styles.header }, /* @__PURE__ */ React3.createElement(View, { style: styles.headerTop }, /* @__PURE__ */ React3.createElement(Text, { style: styles.text }, "Performance Metrics"), /* @__PURE__ */ React3.createElement(View, { style: styles.headerButtons }, /* @__PURE__ */ React3.createElement(
+    /* @__PURE__ */ React3.createElement(
+      TouchableOpacity,
+      {
+        style: styles.dragHandle,
+        onPress: () => setIsCollapsed(!isCollapsed)
+      }
+    ),
+    isCollapsed ? renderCollapsedView() : /* @__PURE__ */ React3.createElement(React3.Fragment, null, /* @__PURE__ */ React3.createElement(View, { style: styles.header }, /* @__PURE__ */ React3.createElement(View, { style: styles.headerTop }, /* @__PURE__ */ React3.createElement(Text, { style: styles.text }, "Performance Metrics"), /* @__PURE__ */ React3.createElement(View, { style: styles.headerButtons }, /* @__PURE__ */ React3.createElement(
       TouchableOpacity,
       {
         style: [styles.iconButton],
@@ -449,8 +456,7 @@ var Overlay = () => {
           style: styles.icon
         }
       )
-    ))), /* @__PURE__ */ React3.createElement(View, { style: styles.screenNameContainer }, /* @__PURE__ */ React3.createElement(Text, { style: styles.screenName }, currentScreen || "No Screen"))),
-    !isMinimized && /* @__PURE__ */ React3.createElement(View, { style: styles.metricsContainer }, /* @__PURE__ */ React3.createElement(View, { style: styles.performanceSection }, /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "TTI"), /* @__PURE__ */ React3.createElement(
+    ))), /* @__PURE__ */ React3.createElement(View, { style: styles.screenNameContainer }, /* @__PURE__ */ React3.createElement(Text, { style: styles.screenName }, currentScreen || "No Screen"))), !isMinimized && /* @__PURE__ */ React3.createElement(View, { style: styles.metricsContainer }, /* @__PURE__ */ React3.createElement(View, { style: styles.performanceSection }, /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "TTI"), /* @__PURE__ */ React3.createElement(
       Text,
       {
         style: [
@@ -468,7 +474,15 @@ var Overlay = () => {
         ]
       },
       fps !== null ? `${fps}` : "..."
-    )), /* @__PURE__ */ React3.createElement(View, { style: styles.divider }), /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "Network Request"), /* @__PURE__ */ React3.createElement(View, { style: styles.networkInfo }, latestRequest && /* @__PURE__ */ React3.createElement(React3.Fragment, null, /* @__PURE__ */ React3.createElement(
+    )), /* @__PURE__ */ React3.createElement(View, { style: styles.divider }), /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(
+      TouchableOpacity,
+      {
+        style: styles.networkLabelContainer,
+        onPress: () => setIsNetworkExpanded(!isNetworkExpanded)
+      },
+      /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "Network Request"),
+      /* @__PURE__ */ React3.createElement(Text, { style: styles.expandIcon }, isNetworkExpanded ? "\u25BC" : "\u25B6")
+    ), /* @__PURE__ */ React3.createElement(View, { style: styles.networkInfo }, latestRequest && /* @__PURE__ */ React3.createElement(React3.Fragment, null, /* @__PURE__ */ React3.createElement(
       Text,
       {
         style: [
@@ -476,23 +490,29 @@ var Overlay = () => {
           { color: getNetworkColor(latestRequest.duration) }
         ]
       },
-      latestRequest.url.split("/").pop(),
-      " \u2192 ",
+      "\u2192 ",
       Math.round(latestRequest.duration),
       "ms"
-    ), latestRequest.status !== 200 && /* @__PURE__ */ React3.createElement(
+    ), isNetworkExpanded && /* @__PURE__ */ React3.createElement(View, { style: styles.expandedNetworkInfo }, /* @__PURE__ */ React3.createElement(View, { style: styles.statusContainer }, /* @__PURE__ */ React3.createElement(
       Text,
       {
         style: [
-          styles.statusText,
+          styles.statusCode,
           { color: getStatusColor(latestRequest.status) }
         ]
       },
-      "Status: ",
       latestRequest.status,
       " ",
-      latestRequest.status >= 500 ? "\u{1F534}" : "\u{1F7E0}"
-    )))), /* @__PURE__ */ React3.createElement(View, { style: styles.divider }), /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "Startup Time"), /* @__PURE__ */ React3.createElement(
+      latestRequest.status >= 500 ? "\u{1F534}" : latestRequest.status >= 400 ? "\u{1F7E0}" : "\u{1F7E2}"
+    )), /* @__PURE__ */ React3.createElement(View, { style: styles.urlContainer }, /* @__PURE__ */ React3.createElement(
+      Text,
+      {
+        style: styles.networkUrl,
+        numberOfLines: 1,
+        ellipsizeMode: "middle"
+      },
+      latestRequest.url
+    )))))), /* @__PURE__ */ React3.createElement(View, { style: styles.divider }), /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "Startup Time"), /* @__PURE__ */ React3.createElement(
       Text,
       {
         style: [
@@ -501,8 +521,7 @@ var Overlay = () => {
         ]
       },
       startupTime !== null ? `${startupTime}ms` : "..."
-    ))), currentScreenMetrics && Object.keys(currentScreenMetrics.reRenderCounts).length > 0 && /* @__PURE__ */ React3.createElement(View, { style: styles.reRendersContainer }, /* @__PURE__ */ React3.createElement(View, { style: styles.divider }), /* @__PURE__ */ React3.createElement(Text, { style: styles.reRendersTitle }, "Re-renders"), Object.entries(currentScreenMetrics.reRenderCounts).map(([name, count], index, array) => /* @__PURE__ */ React3.createElement(React3.Fragment, { key: name }, /* @__PURE__ */ React3.createElement(View, { style: styles.reRenderRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.reRenderName }, name), /* @__PURE__ */ React3.createElement(View, { style: styles.reRenderCountContainer }, /* @__PURE__ */ React3.createElement(Text, { style: styles.reRenderCount }, count), /* @__PURE__ */ React3.createElement(Text, { style: styles.reRenderCountSuffix }, "x"))), index < array.length - 1 && /* @__PURE__ */ React3.createElement(View, { style: styles.divider }))))),
-    /* @__PURE__ */ React3.createElement(View, { style: styles.poweredByContainer }, /* @__PURE__ */ React3.createElement(Text, { style: styles.poweredByText }, "Powered by Optic"))
+    ))), currentScreenMetrics && Object.keys(currentScreenMetrics.reRenderCounts).length > 0 && /* @__PURE__ */ React3.createElement(View, { style: styles.reRendersContainer }, /* @__PURE__ */ React3.createElement(View, { style: styles.divider }), /* @__PURE__ */ React3.createElement(Text, { style: styles.reRendersTitle }, "Re-renders"), Object.entries(currentScreenMetrics.reRenderCounts).map(([name, count], index, array) => /* @__PURE__ */ React3.createElement(React3.Fragment, { key: name }, /* @__PURE__ */ React3.createElement(View, { style: styles.reRenderRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.reRenderName }, name), /* @__PURE__ */ React3.createElement(View, { style: styles.reRenderCountContainer }, /* @__PURE__ */ React3.createElement(Text, { style: styles.reRenderCount }, count), /* @__PURE__ */ React3.createElement(Text, { style: styles.reRenderCountSuffix }, "x"))), index < array.length - 1 && /* @__PURE__ */ React3.createElement(View, { style: styles.divider }))))), /* @__PURE__ */ React3.createElement(View, { style: styles.poweredByContainer }, /* @__PURE__ */ React3.createElement(TouchableOpacity, { onPress: handleOpenWebsite }, /* @__PURE__ */ React3.createElement(Text, { style: styles.poweredByText }, "Powered by Optic"))))
   ));
 };
 var styles = StyleSheet.create({
@@ -516,13 +535,13 @@ var styles = StyleSheet.create({
   },
   overlay: {
     position: "absolute",
-    backgroundColor: "rgba(33, 33, 33, 0.95)",
-    paddingVertical: 12,
+    backgroundColor: "rgba(28, 28, 30, 0.95)",
+    paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
     zIndex: 9999,
     elevation: 20,
-    minWidth: 200,
+    width: 300,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -531,19 +550,37 @@ var styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4.65
   },
+  collapsedOverlay: {
+    width: "auto",
+    paddingVertical: 8,
+    paddingHorizontal: 12
+  },
+  collapsedContainer: {
+    flexDirection: "row",
+    alignItems: "center"
+  },
+  collapsedMetrics: {
+    flexDirection: "row",
+    gap: 12
+  },
+  collapsedMetric: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600"
+  },
   dragHandle: {
-    width: 40,
+    width: 36,
     height: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
     borderRadius: 2,
     alignSelf: "center",
-    marginBottom: 8
+    marginBottom: 6
   },
   header: {
-    marginBottom: 12,
+    marginBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255, 255, 255, 0.1)",
-    paddingBottom: 8
+    paddingBottom: 6
   },
   headerTop: {
     flexDirection: "row",
@@ -555,49 +592,42 @@ var styles = StyleSheet.create({
     gap: 8
   },
   iconButton: {
-    padding: 4,
-    borderRadius: 4,
-    backgroundColor: "rgba(33, 33, 33, 0.95)",
-    width: 24,
-    height: 24,
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    width: 28,
+    height: 28,
     justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 10
+    alignItems: "center"
   },
   icon: {
-    width: 20,
-    height: 20,
+    width: 16,
+    height: 16,
     resizeMode: "contain"
   },
   text: {
     color: "#fff",
-    fontWeight: "600",
+    fontWeight: "700",
     fontSize: 15,
-    letterSpacing: 0.5
+    letterSpacing: 0.3
   },
   screenNameContainer: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4
-  },
-  screenNameLabel: {
-    color: "#fff",
-    fontSize: 12,
-    opacity: 0.7,
-    marginRight: 4
+    borderRadius: 6
   },
   screenName: {
     color: "#fff",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
     fontStyle: "italic"
   },
   metricsContainer: {
-    gap: 4
+    gap: 6
   },
   performanceSection: {
     gap: 2
@@ -605,85 +635,134 @@ var styles = StyleSheet.create({
   metricRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 1
+    alignItems: "flex-start",
+    paddingVertical: 2
   },
   metricLabel: {
     color: "#fff",
     fontSize: 13,
-    opacity: 0.7
+    opacity: 0.8,
+    fontWeight: "500"
   },
   metricValue: {
     fontSize: 13,
-    fontWeight: "500"
+    fontWeight: "600"
   },
   reRendersContainer: {
-    gap: 2
+    gap: 2,
+    marginTop: 6
   },
   divider: {
     height: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     marginVertical: 2
   },
   reRendersTitle: {
     color: "#fff",
     fontSize: 13,
-    opacity: 0.7,
+    opacity: 0.8,
+    fontWeight: "600",
     marginBottom: 2
   },
   reRenderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 1
+    paddingVertical: 2
   },
   reRenderName: {
     color: "#fff",
     fontSize: 12,
-    fontWeight: "600"
+    fontWeight: "500"
   },
   reRenderCountContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4
   },
   reRenderCount: {
     color: "#fff",
-    fontSize: 12,
-    fontWeight: "500"
+    fontSize: 11,
+    fontWeight: "600"
   },
   reRenderCountSuffix: {
     color: "#fff",
-    fontSize: 10,
+    fontSize: 9,
     opacity: 0.7,
+    marginLeft: 1
+  },
+  networkLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4
+  },
+  expandIcon: {
+    color: "#fff",
+    fontSize: 9,
+    opacity: 0.6,
     marginLeft: 2
   },
   networkInfo: {
     alignItems: "flex-end",
-    gap: 0
+    gap: 2
   },
-  statusText: {
+  expandedNetworkInfo: {
+    marginTop: 2,
+    width: "100%",
+    alignItems: "flex-start",
+    gap: 4,
+    paddingHorizontal: 4
+  },
+  statusContainer: {
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    alignSelf: "center"
+  },
+  statusCode: {
     fontSize: 12,
-    marginTop: 1
+    fontWeight: "600",
+    opacity: 0.9
+  },
+  urlContainer: {
+    width: "100%",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    overflow: "hidden"
+  },
+  networkUrl: {
+    color: "#fff",
+    fontSize: 11,
+    opacity: 0.8,
+    fontFamily: Platform.select({ ios: "Menlo", android: "monospace" }),
+    letterSpacing: 0.2,
+    width: "100%",
+    textAlign: "left",
+    maxWidth: "100%",
+    flexShrink: 1
   },
   poweredByContainer: {
     alignSelf: "flex-end",
-    marginTop: 12,
-    marginBottom: -4,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    marginTop: 4,
+    marginBottom: -2,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
     borderRadius: 6,
     paddingHorizontal: 8,
-    paddingVertical: 2
+    paddingVertical: 3
   },
   poweredByText: {
     color: "#fff",
     fontSize: 10,
     fontWeight: "600",
     opacity: 0.7,
-    letterSpacing: 0.2
+    letterSpacing: 0.3,
+    textDecorationLine: "underline"
   }
 });
 

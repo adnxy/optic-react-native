@@ -34,7 +34,6 @@ function withScreenTracking<P extends object>(WrappedComponent: React.ComponentT
     const setCurrentScreen = useMetricsStore((state) => state.setCurrentScreen);
     
     React.useEffect(() => {
-      console.log(`[useoptic] Setting current screen to "${screenName}"`);
       setCurrentScreen(screenName);
       return () => setCurrentScreen(null);
     }, [setCurrentScreen]);

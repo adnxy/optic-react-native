@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, PanResponder, Animated, Dimensions, TouchableOpacity, Clipboard, Image } from 'react-native';
+import { View, Text, StyleSheet, PanResponder, Animated, Dimensions, TouchableOpacity, Clipboard, Image, Platform, Linking } from 'react-native';
 import { useMetricsStore } from '../store/metricsStore';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getFPSColor } from '../metrics/fps';
 import { getNetworkColor } from '../metrics/network';
 import { opticEnabled } from '../store/metricsStore';
@@ -40,15 +40,21 @@ export const Overlay: React.FC = () => {
   console.log('opticEnabled', opticEnabled);
   if (!opticEnabled) return null;
 
+  const insets = useSafeAreaInsets();
   const currentScreen = useMetricsStore((state) => state.currentScreen);
   const screens = useMetricsStore((state) => state.screens);
   const startupTime = useMetricsStore((state) => state.startupTime);
   const fps = useMetricsStore((state) => state.fps);
   const networkRequests = useMetricsStore((state) => state.networkRequests);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isNetworkExpanded, setIsNetworkExpanded] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const pan = useRef(new Animated.ValueXY()).current;
-  const [position, setPosition] = useState({ x: SCREEN_WIDTH - 200, y: 100 });
+  const [position, setPosition] = useState({ 
+    x: (SCREEN_WIDTH - 300) / 2,
+    y: insets.top + 20
+  });
 
   const panResponder = useRef(
     PanResponder.create({
@@ -57,21 +63,15 @@ export const Overlay: React.FC = () => {
         const newX = position.x + gesture.dx;
         const newY = position.y + gesture.dy;
 
-        // Keep within screen bounds
-        const boundedX = Math.max(0, Math.min(newX, SCREEN_WIDTH - 180));
-        const boundedY = Math.max(0, Math.min(newY, SCREEN_HEIGHT - 200));
+        // Keep within screen bounds with padding
+        const boundedX = Math.max(10, Math.min(newX, SCREEN_WIDTH - 290));
+        const boundedY = Math.max(insets.top + 10, Math.min(newY, SCREEN_HEIGHT - 200));
 
-        pan.setValue({ x: boundedX - position.x, y: boundedY - position.y });
-      },
-      onPanResponderRelease: (_, gesture) => {
-        const newX = position.x + gesture.dx;
-        const newY = position.y + gesture.dy;
-
-        // Keep within screen bounds
-        const boundedX = Math.max(0, Math.min(newX, SCREEN_WIDTH - 180));
-        const boundedY = Math.max(0, Math.min(newY, SCREEN_HEIGHT - 200));
-
+        // Update position directly without animation
         setPosition({ x: boundedX, y: boundedY });
+      },
+      onPanResponderRelease: () => {
+        // Reset the pan value without animation
         pan.setValue({ x: 0, y: 0 });
       },
     })
@@ -98,6 +98,10 @@ export const Overlay: React.FC = () => {
     Clipboard.setString(JSON.stringify(metrics, null, 2));
   };
 
+  const handleOpenWebsite = () => {
+    Linking.openURL('https://useoptic.dev');
+  };
+
   // Debug logging for network requests
   React.useEffect(() => {
     if (latestRequest) {
@@ -109,145 +113,189 @@ export const Overlay: React.FC = () => {
     }
   }, [latestRequest]);
 
+  const renderCollapsedView = () => (
+    <View style={styles.collapsedContainer}>
+      <View style={styles.collapsedMetrics}>
+        <Text style={styles.collapsedMetric}>
+          ⚡ {currentTTI !== null && currentTTI !== undefined ? `${currentTTI.toFixed(1)}ms` : '...'}
+        </Text>
+        <Text style={styles.collapsedMetric}>
+          🚀 {startupTime !== null ? `${startupTime.toFixed(1)}ms` : '...'}
+        </Text>
+        <Text style={styles.collapsedMetric}>
+          🎮 {fps !== null ? `${fps.toFixed(1)}` : '...'}
+        </Text>
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safeArea} pointerEvents="box-none">
       <Animated.View
         style={[
           styles.overlay,
+          isCollapsed ? styles.collapsedOverlay : null,
           {
-            transform: [
-              { translateX: pan.x },
-              { translateY: pan.y },
-            ],
             left: position.x,
             top: position.y,
           },
         ]}
         {...panResponder.panHandlers}
       >
-        <View style={styles.dragHandle} />
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <Text style={styles.text}>Performance Metrics</Text>
-            <View style={styles.headerButtons}>
-              {/* <TouchableOpacity 
-                style={styles.iconButton}
-                onPress={handleCopyMetrics}
-              >
-                <Text style={styles.iconButtonText}>📋</Text>
-              </TouchableOpacity> */}
-              <TouchableOpacity
-                style={[styles.iconButton]}
-                onPress={() => setIsMinimized(!isMinimized)}
-              >
-                <Image
-                  source={{ uri: isMinimized ? maximizeImageUrl : minimizeImageUrl }}
-                  style={styles.icon}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-          <View style={styles.screenNameContainer}>
-            <Text style={styles.screenName}>
-              {currentScreen || 'No Screen'}
-            </Text>
-          </View>
-        </View>
+        <TouchableOpacity 
+          style={styles.dragHandle} 
+          onPress={() => setIsCollapsed(!isCollapsed)}
+        />
         
-        {!isMinimized && (
-          <View style={styles.metricsContainer}>
-            <View style={styles.performanceSection}>
-              <View style={styles.metricRow}>
-                <Text style={styles.metricLabel}>TTI</Text>
-                <Text 
-                  style={[
-                    styles.metricValue,
-                    { color: getMetricColor(currentTTI, 'TTI') }
-                  ]}
-                >
-                  {currentTTI !== null ? `${currentTTI}ms` : '...'}
-                </Text>
-              </View>
-              <View style={styles.divider} />
-
-              <View style={styles.metricRow}>
-                <Text style={styles.metricLabel}>FPS</Text>
-                <Text 
-                  style={[
-                    styles.metricValue,
-                    { color: getFPSColor(fps) }
-                  ]}
-                >
-                  {fps !== null ? `${fps}` : '...'}
-                </Text>
-              </View>
-              <View style={styles.divider} />
-
-              <View style={styles.metricRow}>
-                <Text style={styles.metricLabel}>Network Request</Text>
-                <View style={styles.networkInfo}>
-                  {latestRequest && (
-                    <>
-                      <Text 
-                        style={[
-                          styles.metricValue,
-                          { color: getNetworkColor(latestRequest.duration) }
-                        ]}
-                      >
-                        {latestRequest.url.split('/').pop()} → {Math.round(latestRequest.duration)}ms
-                      </Text>
-                      {latestRequest.status !== 200 && (
-                        <Text 
-                          style={[
-                            styles.statusText,
-                            { color: getStatusColor(latestRequest.status) }
-                          ]}
-                        >
-                          Status: {latestRequest.status} {latestRequest.status >= 500 ? '🔴' : '🟠'}
-                        </Text>
-                      )}
-                    </>
-                  )}
+        {isCollapsed ? (
+          renderCollapsedView()
+        ) : (
+          <>
+            <View style={styles.header}>
+              <View style={styles.headerTop}>
+                <Text style={styles.text}>Performance Metrics</Text>
+                <View style={styles.headerButtons}>
+                  {/* <TouchableOpacity 
+                    style={styles.iconButton}
+                    onPress={handleCopyMetrics}
+                  >
+                    <Text style={styles.iconButtonText}>📋</Text>
+                  </TouchableOpacity> */}
+                  <TouchableOpacity
+                    style={[styles.iconButton]}
+                    onPress={() => setIsMinimized(!isMinimized)}
+                  >
+                    <Image
+                      source={{ uri: isMinimized ? maximizeImageUrl : minimizeImageUrl }}
+                      style={styles.icon}
+                    />
+                  </TouchableOpacity>
                 </View>
               </View>
-              <View style={styles.divider} />
-
-              <View style={styles.metricRow}>
-                <Text style={styles.metricLabel}>Startup Time</Text>
-                <Text 
-                  style={[
-                    styles.metricValue,
-                    { color: getMetricColor(startupTime, 'STARTUP') }
-                  ]}
-                >
-                  {startupTime !== null ? `${startupTime}ms` : '...'}
+              <View style={styles.screenNameContainer}>
+                <Text style={styles.screenName}>
+                  {currentScreen || 'No Screen'}
                 </Text>
               </View>
             </View>
+            
+            {!isMinimized && (
+              <View style={styles.metricsContainer}>
+                <View style={styles.performanceSection}>
+                  <View style={styles.metricRow}>
+                    <Text style={styles.metricLabel}>TTI</Text>
+                    <Text 
+                      style={[
+                        styles.metricValue,
+                        { color: getMetricColor(currentTTI, 'TTI') }
+                      ]}
+                    >
+                      {currentTTI !== null && currentTTI !== undefined ? `${currentTTI.toFixed(1)}ms` : '...'}
+                    </Text>
+                  </View>
+                  <View style={styles.divider} />
 
-            {currentScreenMetrics && Object.keys(currentScreenMetrics.reRenderCounts).length > 0 && (
-              <View style={styles.reRendersContainer}>
-                <View style={styles.divider} />
-                <Text style={styles.reRendersTitle}>Re-renders</Text>
-                {Object.entries(currentScreenMetrics.reRenderCounts).map(([name, count], index, array) => (
-                  <React.Fragment key={name}>
-                    <View style={styles.reRenderRow}>
-                      <Text style={styles.reRenderName}>{name}</Text>
-                      <View style={styles.reRenderCountContainer}>
-                        <Text style={styles.reRenderCount}>{count}</Text>
-                        <Text style={styles.reRenderCountSuffix}>x</Text>
-                      </View>
+                  <View style={styles.metricRow}>
+                    <Text style={styles.metricLabel}>FPS</Text>
+                    <Text 
+                      style={[
+                        styles.metricValue,
+                        { color: getFPSColor(fps) }
+                      ]}
+                    >
+                      {fps !== null ? `${fps.toFixed(1)}` : '...'}
+                    </Text>
+                  </View>
+                  <View style={styles.divider} />
+
+                  <View style={styles.metricRow}>
+                    <TouchableOpacity 
+                      style={styles.networkLabelContainer}
+                      onPress={() => setIsNetworkExpanded(!isNetworkExpanded)}
+                    >
+                      <Text style={styles.metricLabel}>Network Request</Text>
+                      <Text style={styles.expandIcon}>{isNetworkExpanded ? '▼' : '▶'}</Text>
+                    </TouchableOpacity>
+                    <View style={styles.networkInfo}>
+                      {latestRequest && (
+                        <>
+                          <Text 
+                            style={[
+                              styles.metricValue,
+                              { color: getNetworkColor(latestRequest.duration) }
+                            ]}
+                          >
+                            → {Math.round(latestRequest.duration).toFixed(1)}ms
+                          </Text>
+                          {isNetworkExpanded && (
+                            <View style={styles.expandedNetworkInfo}>
+                              <View style={styles.statusContainer}>
+                                <Text 
+                                  style={[
+                                    styles.statusCode,
+                                    { color: getStatusColor(latestRequest.status) }
+                                  ]}
+                                >
+                                  {latestRequest.status} {latestRequest.status >= 500 ? '🔴' : latestRequest.status >= 400 ? '🟠' : '🟢'}
+                                </Text>
+                              </View>
+                              <View style={styles.urlContainer}>
+                                <Text 
+                                  style={styles.networkUrl}
+                                  numberOfLines={1}
+                                  ellipsizeMode="middle"
+                                >
+                                  {latestRequest.url}
+                                </Text>
+                              </View>
+                            </View>
+                          )}
+                        </>
+                      )}
                     </View>
-                    {index < array.length - 1 && <View style={styles.divider} />}
-                  </React.Fragment>
-                ))}
+                  </View>
+                  <View style={styles.divider} />
+
+                  <View style={styles.metricRow}>
+                    <Text style={styles.metricLabel}>Startup Time</Text>
+                    <Text 
+                      style={[
+                        styles.metricValue,
+                        { color: getMetricColor(startupTime, 'STARTUP') }
+                      ]}
+                    >
+                      {startupTime !== null ? `${startupTime.toFixed(1)}ms` : '...'}
+                    </Text>
+                  </View>
+                </View>
+
+                {currentScreenMetrics && Object.keys(currentScreenMetrics.reRenderCounts).length > 0 && (
+                  <View style={styles.reRendersContainer}>
+                    <View style={styles.divider} />
+                    <Text style={styles.reRendersTitle}>Re-renders</Text>
+                    {Object.entries(currentScreenMetrics.reRenderCounts).map(([name, count], index, array) => (
+                      <React.Fragment key={name}>
+                        <View style={styles.reRenderRow}>
+                          <Text style={styles.reRenderName}>{name}</Text>
+                          <View style={styles.reRenderCountContainer}>
+                            <Text style={styles.reRenderCount}>{count}</Text>
+                            <Text style={styles.reRenderCountSuffix}>x</Text>
+                          </View>
+                        </View>
+                        {index < array.length - 1 && <View style={styles.divider} />}
+                      </React.Fragment>
+                    ))}
+                  </View>
+                )}
               </View>
             )}
-          </View>
+            <View style={styles.poweredByContainer}>
+              <TouchableOpacity onPress={handleOpenWebsite}>
+                <Text style={styles.poweredByText}>Powered by Optic</Text>
+              </TouchableOpacity>
+            </View>
+          </>
         )}
-        <View style={styles.poweredByContainer}>
-          <Text style={styles.poweredByText}>Powered by Optic</Text>
-        </View>
       </Animated.View>
     </SafeAreaView>
   );
@@ -264,13 +312,13 @@ const styles = StyleSheet.create({
   },
   overlay: {
     position: 'absolute',
-    backgroundColor: 'rgba(33, 33, 33, 0.95)',
-    paddingVertical: 12,
+    backgroundColor: 'rgba(28, 28, 30, 0.95)',
+    paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
     zIndex: 9999,
     elevation: 20,
-    minWidth: 200,
+    width: 300,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -279,19 +327,37 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4.65,
   },
+  collapsedOverlay: {
+    width: 'auto',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  collapsedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  collapsedMetrics: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  collapsedMetric: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   dragHandle: {
-    width: 40,
+    width: 36,
     height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   header: {
-    marginBottom: 12,
+    marginBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-    paddingBottom: 8,
+    paddingBottom: 6,
   },
   headerTop: {
     flexDirection: 'row',
@@ -303,49 +369,42 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   iconButton: {
-    padding: 4,
-    borderRadius: 4,
-    backgroundColor: 'rgba(33, 33, 33, 0.95)',
-    width: 24,
-    height: 24,
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    width: 28,
+    height: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
   },
   icon: {
-    width: 20,
-    height: 20,
+    width: 16,
+    height: 16,
     resizeMode: 'contain',
   },
   text: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 15,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   screenNameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
-  },
-  screenNameLabel: {
-    color: '#fff',
-    fontSize: 12,
-    opacity: 0.7,
-    marginRight: 4,
+    borderRadius: 6,
   },
   screenName: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     fontStyle: 'italic',
   },
   metricsContainer: {
-    gap: 4,
+    gap: 6,
   },
   performanceSection: {
     gap: 2,
@@ -353,84 +412,133 @@ const styles = StyleSheet.create({
   metricRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 1,
+    alignItems: 'flex-start',
+    paddingVertical: 2,
   },
   metricLabel: {
     color: '#fff',
     fontSize: 13,
-    opacity: 0.7,
+    opacity: 0.8,
+    fontWeight: '500',
   },
   metricValue: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   reRendersContainer: {
     gap: 2,
+    marginTop: 6,
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     marginVertical: 2,
   },
   reRendersTitle: {
     color: '#fff',
     fontSize: 13,
-    opacity: 0.7,
+    opacity: 0.8,
+    fontWeight: '600',
     marginBottom: 2,
   },
   reRenderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 1,
+    paddingVertical: 2,
   },
   reRenderName: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   reRenderCountContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   reRenderCount: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
   },
   reRenderCountSuffix: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 9,
     opacity: 0.7,
+    marginLeft: 1,
+  },
+  networkLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  expandIcon: {
+    color: '#fff',
+    fontSize: 9,
+    opacity: 0.6,
     marginLeft: 2,
   },
   networkInfo: {
     alignItems: 'flex-end',
-    gap: 0,
+    gap: 2,
   },
-  statusText: {
+  expandedNetworkInfo: {
+    marginTop: 2,
+    width: '100%',
+    alignItems: 'flex-start',
+    gap: 4,
+    paddingHorizontal: 4,
+  },
+  statusContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    alignSelf: 'center',
+  },
+  statusCode: {
     fontSize: 12,
-    marginTop: 1,
+    fontWeight: '600',
+    opacity: 0.9,
+  },
+  urlContainer: {
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    overflow: 'hidden',
+  },
+  networkUrl: {
+    color: '#fff',
+    fontSize: 11,
+    opacity: 0.8,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+    letterSpacing: 0.2,
+    width: '100%',
+    textAlign: 'left',
+    maxWidth: '100%',
+    flexShrink: 1,
   },
   poweredByContainer: {
     alignSelf: 'flex-end',
-    marginTop: 12,
-    marginBottom: -4,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    marginTop: 4,
+    marginBottom: -2,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     borderRadius: 6,
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
   },
   poweredByText: {
     color: '#fff',
     fontSize: 10,
     fontWeight: '600',
     opacity: 0.7,
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
+    textDecorationLine: 'underline',
   },
 });

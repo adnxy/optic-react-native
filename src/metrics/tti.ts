@@ -3,8 +3,9 @@ import { InteractionManager } from 'react-native';
 
 let startTimes: Record<string, number> = {};
 
+//TODO add realistic thresholds
 const TTI_THRESHOLDS = {
-  good: 150,
+  good: 250,
   warning: 300,
 };
 
