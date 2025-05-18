@@ -17,6 +17,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@react-navigation/native": "^7.1.9",
+    "expo-router": "^5.0.7",
     "react": "*",
     "react-native": "*",
     "zustand": "^5.0.4"

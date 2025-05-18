@@ -15,7 +15,14 @@ export interface InitOpticOptions {
   startup?: boolean;
   fps?: boolean;
   enabled?: boolean;
-  onMetricsLogged?: (metrics: MetricsState) => void;
+  metrics?: {
+    tti?: boolean;
+    startup?: boolean;
+    reRenders?: boolean;
+    fps?: boolean;
+    network?: boolean;
+  };
+  onMetricsLogged?: (metrics: any) => void;
 }
 
 // Create a wrapper component that automatically tracks screen names

@@ -9,36 +9,21 @@ export interface NetworkRequest {
   [key: string]: any; // for any extra fields
 }
 
-export interface ScreenMetrics {
-  tti: number | null;
-  reRenderCounts: Record<string, number>;
-}
-
 export interface MetricsState {
   currentScreen: string | null;
-  screens: Record<string, {
-    tti: number | null;
+  screens: Record<string, { 
     reRenderCounts: Record<string, number>;
+    tti: number | null;
   }>;
   startupTime: number | null;
   fps: number | null;
-  networkRequests: Array<{
-    url: string;
-    method: string;
-    duration: number;
-    status: number;
-  }>;
+  networkRequests: NetworkRequest[];
   setCurrentScreen: (screenName: string | null) => void;
-  setTTI: (screenName: string, tti: number | null) => void;
+  setTTI: (tti: number | null, screenName: string) => void;
   incrementReRender: (componentName: string) => void;
   setStartupTime: (time: number) => void;
   setFPS: (fps: number) => void;
-  addNetworkRequest: (request: {
-    url: string;
-    method: string;
-    duration: number;
-    status: number;
-  }) => void;
+  addNetworkRequest: (request: NetworkRequest) => void;
 }
 
 export const useMetricsStore = create<MetricsState>((set, get) => ({
@@ -57,8 +42,8 @@ export const useMetricsStore = create<MetricsState>((set, get) => ({
           screens: {
             ...state.screens,
             [screenName]: {
-              tti: null,
               reRenderCounts: {},
+              tti: null,
             },
           },
         };
@@ -67,7 +52,7 @@ export const useMetricsStore = create<MetricsState>((set, get) => ({
     });
   },
 
-  setTTI: (screenName, tti) => {
+  setTTI: (tti, screenName) => {
     set((state) => ({
       screens: {
         ...state.screens,

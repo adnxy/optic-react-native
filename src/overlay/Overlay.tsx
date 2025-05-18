@@ -22,8 +22,8 @@ const METRICS_THRESHOLDS = {
   },
 };
 
-const getMetricColor = (value: number | null, type: 'TTI' | 'STARTUP') => {
-  if (value === null) return '#fff';
+const getMetricColor = (value: number | null | undefined, type: 'TTI' | 'STARTUP') => {
+  if (value === null || value === undefined) return '#fff';
   const thresholds = METRICS_THRESHOLDS[type];
   if (value <= thresholds.good) return '#4CAF50'; // Green
   if (value <= thresholds.warning) return '#FFC107'; // Yellow
@@ -78,6 +78,7 @@ export const Overlay: React.FC = () => {
   ).current;
 
   const currentScreenMetrics = currentScreen ? screens[currentScreen] : null;
+  const currentTTI = currentScreenMetrics?.tti;
   const latestRequest = networkRequests[networkRequests.length - 1];
 
   const handleCopyMetrics = () => {
@@ -89,7 +90,7 @@ export const Overlay: React.FC = () => {
         duration: Math.round(latestRequest.duration),
         status: latestRequest.status
       } : null,
-      tti: currentScreenMetrics?.tti,
+      tti: currentTTI,
       startupTime,
       reRenders: currentScreenMetrics?.reRenderCounts
     };
@@ -157,6 +158,19 @@ export const Overlay: React.FC = () => {
           <View style={styles.metricsContainer}>
             <View style={styles.performanceSection}>
               <View style={styles.metricRow}>
+                <Text style={styles.metricLabel}>TTI</Text>
+                <Text 
+                  style={[
+                    styles.metricValue,
+                    { color: getMetricColor(currentTTI, 'TTI') }
+                  ]}
+                >
+                  {currentTTI !== null ? `${currentTTI}ms` : '...'}
+                </Text>
+              </View>
+              <View style={styles.divider} />
+
+              <View style={styles.metricRow}>
                 <Text style={styles.metricLabel}>FPS</Text>
                 <Text 
                   style={[
@@ -195,19 +209,6 @@ export const Overlay: React.FC = () => {
                     </>
                   )}
                 </View>
-              </View>
-              <View style={styles.divider} />
-
-              <View style={styles.metricRow}>
-                <Text style={styles.metricLabel}>TTI</Text>
-                <Text 
-                  style={[
-                    styles.metricValue,
-                    { color: getMetricColor(currentScreenMetrics?.tti || null, 'TTI') }
-                  ]}
-                >
-                  {currentScreenMetrics?.tti !== null ? `${currentScreenMetrics?.tti}ms` : '...'}
-                </Text>
               </View>
               <View style={styles.divider} />
 

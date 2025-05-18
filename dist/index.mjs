@@ -36,8 +36,8 @@ var useMetricsStore = create((set, get) => ({
           currentScreen: screenName,
           screens: __spreadProps(__spreadValues({}, state.screens), {
             [screenName]: {
-              tti: null,
-              reRenderCounts: {}
+              reRenderCounts: {},
+              tti: null
             }
           })
         };
@@ -45,7 +45,7 @@ var useMetricsStore = create((set, get) => ({
       return { currentScreen: screenName };
     });
   },
-  setTTI: (screenName, tti) => {
+  setTTI: (tti, screenName) => {
     set((state) => ({
       screens: __spreadProps(__spreadValues({}, state.screens), {
         [screenName]: __spreadProps(__spreadValues({}, state.screens[screenName]), {
@@ -330,6 +330,9 @@ function initOptic(options = {}) {
   };
 }
 
+// src/providers/OpticProvider.tsx
+import React4, { useEffect as useEffect2, useRef as useRef2 } from "react";
+
 // src/overlay/Overlay.tsx
 import React3, { useRef, useState } from "react";
 import { View, Text, StyleSheet, PanResponder, Animated, Dimensions, TouchableOpacity, Clipboard, Image } from "react-native";
@@ -348,7 +351,7 @@ var METRICS_THRESHOLDS = {
   }
 };
 var getMetricColor = (value, type) => {
-  if (value === null) return "#fff";
+  if (value === null || value === void 0) return "#fff";
   const thresholds = METRICS_THRESHOLDS[type];
   if (value <= thresholds.good) return "#4CAF50";
   if (value <= thresholds.warning) return "#FFC107";
@@ -391,6 +394,7 @@ var Overlay = () => {
     })
   ).current;
   const currentScreenMetrics = currentScreen ? screens[currentScreen] : null;
+  const currentTTI = currentScreenMetrics == null ? void 0 : currentScreenMetrics.tti;
   const latestRequest = networkRequests[networkRequests.length - 1];
   const handleCopyMetrics = () => {
     const metrics = {
@@ -401,7 +405,7 @@ var Overlay = () => {
         duration: Math.round(latestRequest.duration),
         status: latestRequest.status
       } : null,
-      tti: currentScreenMetrics == null ? void 0 : currentScreenMetrics.tti,
+      tti: currentTTI,
       startupTime,
       reRenders: currentScreenMetrics == null ? void 0 : currentScreenMetrics.reRenderCounts
     };
@@ -446,7 +450,16 @@ var Overlay = () => {
         }
       )
     ))), /* @__PURE__ */ React3.createElement(View, { style: styles.screenNameContainer }, /* @__PURE__ */ React3.createElement(Text, { style: styles.screenName }, currentScreen || "No Screen"))),
-    !isMinimized && /* @__PURE__ */ React3.createElement(View, { style: styles.metricsContainer }, /* @__PURE__ */ React3.createElement(View, { style: styles.performanceSection }, /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "FPS"), /* @__PURE__ */ React3.createElement(
+    !isMinimized && /* @__PURE__ */ React3.createElement(View, { style: styles.metricsContainer }, /* @__PURE__ */ React3.createElement(View, { style: styles.performanceSection }, /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "TTI"), /* @__PURE__ */ React3.createElement(
+      Text,
+      {
+        style: [
+          styles.metricValue,
+          { color: getMetricColor(currentTTI, "TTI") }
+        ]
+      },
+      currentTTI !== null ? `${currentTTI}ms` : "..."
+    )), /* @__PURE__ */ React3.createElement(View, { style: styles.divider }), /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "FPS"), /* @__PURE__ */ React3.createElement(
       Text,
       {
         style: [
@@ -479,16 +492,7 @@ var Overlay = () => {
       latestRequest.status,
       " ",
       latestRequest.status >= 500 ? "\u{1F534}" : "\u{1F7E0}"
-    )))), /* @__PURE__ */ React3.createElement(View, { style: styles.divider }), /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "TTI"), /* @__PURE__ */ React3.createElement(
-      Text,
-      {
-        style: [
-          styles.metricValue,
-          { color: getMetricColor((currentScreenMetrics == null ? void 0 : currentScreenMetrics.tti) || null, "TTI") }
-        ]
-      },
-      (currentScreenMetrics == null ? void 0 : currentScreenMetrics.tti) !== null ? `${currentScreenMetrics == null ? void 0 : currentScreenMetrics.tti}ms` : "..."
-    )), /* @__PURE__ */ React3.createElement(View, { style: styles.divider }), /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "Startup Time"), /* @__PURE__ */ React3.createElement(
+    )))), /* @__PURE__ */ React3.createElement(View, { style: styles.divider }), /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "Startup Time"), /* @__PURE__ */ React3.createElement(
       Text,
       {
         style: [
@@ -683,21 +687,110 @@ var styles = StyleSheet.create({
   }
 });
 
+// src/metrics/tti.ts
+import { InteractionManager } from "react-native";
+var startTimes = {};
+function startTTITracking() {
+  const currentScreen = useMetricsStore.getState().currentScreen;
+  if (!currentScreen) return;
+  startTimes[currentScreen] = Date.now();
+  console.log(`[useoptic] Starting TTI measurement for ${currentScreen}`);
+  InteractionManager.runAfterInteractions(() => {
+    setTimeout(() => {
+      const tti = Date.now() - startTimes[currentScreen];
+      useMetricsStore.getState().setTTI(tti, currentScreen);
+      console.log(`[useoptic] Captured TTI for ${currentScreen}: ${tti}ms`);
+    }, 100);
+  });
+}
+function stopTTITracking() {
+}
+function resetTTIForCurrentScreen() {
+  const currentScreen = useMetricsStore.getState().currentScreen;
+  if (!currentScreen) return;
+  startTTITracking();
+}
+
+// src/providers/OpticProvider.tsx
+import { useNavigation, useRoute, useNavigationContainerRef } from "@react-navigation/native";
+import { usePathname, useSegments } from "expo-router";
+if (!global.__OPTIC_APP_TTI_START__) {
+  global.__OPTIC_APP_TTI_START__ = {};
+}
+var OpticProvider = ({
+  children,
+  metrics = {
+    tti: true,
+    startup: true,
+    reRenders: true,
+    fps: true,
+    network: true
+  },
+  showOverlay = true
+}) => {
+  const setCurrentScreen = useMetricsStore((state) => state.setCurrentScreen);
+  const currentScreen = useMetricsStore((state) => state.currentScreen);
+  const prevScreenRef = useRef2(null);
+  const pathname = usePathname();
+  const segments = useSegments();
+  const navigationRef = useNavigationContainerRef();
+  const navigation = useNavigation();
+  const route = useRoute();
+  const getCurrentScreenName = () => {
+    if (pathname) {
+      return pathname;
+    }
+    if (navigationRef.current) {
+      const currentRoute = navigationRef.current.getCurrentRoute();
+      if (currentRoute == null ? void 0 : currentRoute.name) {
+        return currentRoute.name;
+      }
+    }
+    return segments[0] || "index";
+  };
+  useEffect2(() => {
+    const screenName = getCurrentScreenName();
+    setCurrentScreen(screenName);
+    if (prevScreenRef.current !== screenName) {
+      prevScreenRef.current = screenName;
+      startTTITracking();
+    }
+  }, [pathname, segments, navigationRef.current]);
+  useEffect2(() => {
+    if (!metrics.tti) {
+      stopTTITracking();
+      return;
+    }
+    const isNewScreen = prevScreenRef.current !== currentScreen;
+    if (isNewScreen && currentScreen) {
+      console.log(`[useoptic] Screen changed from ${prevScreenRef.current} to ${currentScreen}`);
+      prevScreenRef.current = currentScreen;
+      resetTTIForCurrentScreen();
+    } else if (currentScreen) {
+      startTTITracking();
+    }
+    return () => {
+      stopTTITracking();
+    };
+  }, [currentScreen, metrics.tti]);
+  return /* @__PURE__ */ React4.createElement(React4.Fragment, null, children, showOverlay && /* @__PURE__ */ React4.createElement(Overlay, null));
+};
+
 // src/metrics/reRenders.ts
-import * as React4 from "react";
-var { useEffect: useEffect2, useRef: useRef2 } = React4;
+import * as React5 from "react";
+var { useEffect: useEffect3, useRef: useRef3 } = React5;
 function useRenderMonitor(componentName, props) {
-  if (!React4) {
+  if (!React5) {
     console.error("[useoptic] React is not available. Make sure React is properly imported.");
     return;
   }
-  const prevProps = useRef2(null);
+  const prevProps = useRef3(null);
   const incrementReRender = useMetricsStore((state) => state.incrementReRender);
   const currentScreen = useMetricsStore((state) => state.currentScreen);
-  useEffect2(() => {
+  useEffect3(() => {
     prevProps.current = null;
   }, [currentScreen]);
-  useEffect2(() => {
+  useEffect3(() => {
     if (prevProps.current) {
       const changedProps = {};
       for (const key of Object.keys(props)) {
@@ -719,63 +812,10 @@ function useRenderMonitor(componentName, props) {
     prevProps.current = props;
   });
 }
-
-// src/metrics/screen.ts
-import { useEffect as useEffect3, useRef as useRef3, useCallback } from "react";
-if (!global.__OPTIC_SCREEN_TTI_CAPTURED__) {
-  global.__OPTIC_SCREEN_TTI_CAPTURED__ = {};
-}
-if (!global.__OPTIC_SCREEN_TTI_START__) {
-  global.__OPTIC_SCREEN_TTI_START__ = {};
-}
-function useScreenMetrics(screenName) {
-  const setCurrentScreen = useMetricsStore((state) => state.setCurrentScreen);
-  const setTTI = useMetricsStore((state) => state.setTTI);
-  const screens = useMetricsStore((state) => state.screens);
-  const prevScreenRef = useRef3(null);
-  const mountedRef = useRef3(true);
-  const handleScreenChange = useCallback(() => {
-    const isNewScreen = prevScreenRef.current !== screenName;
-    if (isNewScreen) {
-      prevScreenRef.current = screenName;
-      global.__OPTIC_SCREEN_TTI_CAPTURED__[screenName] = false;
-      setCurrentScreen(screenName);
-    }
-  }, [screenName, setCurrentScreen]);
-  useEffect3(() => {
-    handleScreenChange();
-  }, [handleScreenChange]);
-  useEffect3(() => {
-    mountedRef.current = true;
-    if (!global.__OPTIC_SCREEN_TTI_CAPTURED__[screenName]) {
-      console.log(`[useoptic] Measuring TTI for "${screenName}"`);
-      global.__OPTIC_SCREEN_TTI_CAPTURED__[screenName] = true;
-      global.__OPTIC_SCREEN_TTI_START__[screenName] = Date.now();
-      setTTI(screenName, null);
-      requestAnimationFrame(() => {
-        if (mountedRef.current) {
-          const start = global.__OPTIC_SCREEN_TTI_START__[screenName];
-          const tti = Date.now() - start;
-          setTTI(screenName, tti);
-        }
-      });
-    } else {
-      console.log(`[useoptic] TTI already captured for "${screenName}"`);
-    }
-    return () => {
-      mountedRef.current = false;
-      if (prevScreenRef.current !== screenName) {
-        if (screens[screenName]) {
-          setTTI(screenName, null);
-        }
-      }
-    };
-  }, [screenName, setTTI, screens]);
-}
 export {
-  Overlay,
+  OpticProvider,
   initOptic,
-  useRenderMonitor,
-  useScreenMetrics
+  useMetricsStore,
+  useRenderMonitor
 };
 //# sourceMappingURL=index.mjs.map
