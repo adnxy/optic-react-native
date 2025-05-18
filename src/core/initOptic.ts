@@ -5,6 +5,7 @@ import { trackStartupTime } from '../metrics/startup';
 import { startFPSTracking } from '../metrics/fps';
 import type { MetricsState } from '../store/metricsStore';
 import { setOpticEnabled } from '../store/metricsStore';
+import React from 'react';
 
 export interface InitOpticOptions {
   rootComponent?: React.ComponentType<any>;
@@ -15,6 +16,53 @@ export interface InitOpticOptions {
   fps?: boolean;
   enabled?: boolean;
   onMetricsLogged?: (metrics: MetricsState) => void;
+}
+
+// Create a wrapper component that automatically tracks screen names
+function withScreenTracking<P extends object>(WrappedComponent: React.ComponentType<P>) {
+  const displayName = WrappedComponent.displayName || WrappedComponent.name || 'Unknown';
+  const screenName = displayName.replace(/Screen$/, '');
+
+  function WithScreenTracking(props: P) {
+    const setCurrentScreen = useMetricsStore((state) => state.setCurrentScreen);
+    
+    React.useEffect(() => {
+      console.log(`[useoptic] Setting current screen to "${screenName}"`);
+      setCurrentScreen(screenName);
+      return () => setCurrentScreen(null);
+    }, [setCurrentScreen]);
+
+    return React.createElement(WrappedComponent, props);
+  }
+
+  WithScreenTracking.displayName = `WithScreenTracking(${displayName})`;
+  return WithScreenTracking;
+}
+
+// Function to check if a component is likely a screen
+function isScreenComponent(component: any): boolean {
+  const name = component.displayName || component.name || '';
+  return name.endsWith('Screen') || name.endsWith('Page') || name.endsWith('View');
+}
+
+// Store to keep track of wrapped components
+const wrappedComponents = new WeakMap();
+
+// Function to wrap a component if it's a screen
+function wrapIfScreen<P extends object>(Component: React.ComponentType<P>): React.ComponentType<P> {
+  if (!isScreenComponent(Component)) {
+    return Component;
+  }
+
+  // Check if already wrapped
+  if (wrappedComponents.has(Component)) {
+    return wrappedComponents.get(Component);
+  }
+
+  // Wrap the component
+  const wrapped = withScreenTracking(Component);
+  wrappedComponents.set(Component, wrapped);
+  return wrapped;
 }
 
 export function initOptic(options: InitOpticOptions = {}) {
@@ -35,7 +83,8 @@ export function initOptic(options: InitOpticOptions = {}) {
 
   // Set the root component if provided
   if (rootComponent) {
-    setRootComponent(rootComponent);
+    const wrappedRoot = wrapIfScreen(rootComponent);
+    setRootComponent(wrappedRoot);
   }
 
   // Initialize render tracking if enabled

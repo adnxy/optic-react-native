@@ -23,80 +23,36 @@ import * as React from "react";
 
 // src/store/metricsStore.ts
 import { create } from "zustand";
-var createScreenMetrics = () => ({
-  tti: null,
-  reRenderCounts: {}
-});
 var useMetricsStore = create((set, get) => ({
   currentScreen: null,
   screens: {},
   startupTime: null,
   fps: null,
   networkRequests: [],
-  setCurrentScreen: (screen) => {
-    const state = get();
-    if (state.currentScreen !== screen) {
-      console.log(`[useoptic] Setting current screen to: ${screen}`);
-      set((state2) => {
-        if (!state2.screens[screen]) {
-          return {
-            currentScreen: screen,
-            screens: __spreadProps(__spreadValues({}, state2.screens), {
-              [screen]: createScreenMetrics()
-            })
-          };
-        }
-        return { currentScreen: screen };
-      });
-    }
-  },
-  setTTI: (screen, tti) => {
-    var _a;
-    const state = get();
-    if (!state.currentScreen) {
-      console.log("[useoptic] Cannot set TTI: no current screen");
-      return;
-    }
-    const currentTTI = (_a = state.screens[state.currentScreen]) == null ? void 0 : _a.tti;
-    if (currentTTI !== tti) {
-      console.log(`[useoptic] Setting TTI for ${state.currentScreen}: ${tti}ms`);
-      set((state2) => ({
-        screens: __spreadProps(__spreadValues({}, state2.screens), {
-          [screen]: __spreadProps(__spreadValues({}, state2.screens[screen]), {
-            tti
-          })
-        })
-      }));
-    }
-  },
-  setStartupTime: (time) => {
-    const state = get();
-    if (state.startupTime !== time) {
-      console.log(`[useoptic] Setting startup time: ${time}ms`);
-      set({ startupTime: time });
-    }
-  },
-  setFPS: (fps) => {
-    const state = get();
-    if (state.fps !== fps) {
-      console.log(`[useoptic] Setting fps: ${fps}`);
-      set({ fps });
-    }
-  },
-  addNetworkRequest: (request) => {
-    console.log("[useoptic] Adding network request:", {
-      url: request.url,
-      method: request.method,
-      duration: Math.round(request.duration),
-      status: request.status
-    });
+  setCurrentScreen: (screenName) => {
     set((state) => {
-      const newRequests = [...state.networkRequests, request].slice(-50);
-      console.log("[useoptic] Current network requests:", newRequests.length);
-      return {
-        networkRequests: newRequests
-      };
+      if (screenName && !state.screens[screenName]) {
+        return {
+          currentScreen: screenName,
+          screens: __spreadProps(__spreadValues({}, state.screens), {
+            [screenName]: {
+              tti: null,
+              reRenderCounts: {}
+            }
+          })
+        };
+      }
+      return { currentScreen: screenName };
     });
+  },
+  setTTI: (screenName, tti) => {
+    set((state) => ({
+      screens: __spreadProps(__spreadValues({}, state.screens), {
+        [screenName]: __spreadProps(__spreadValues({}, state.screens[screenName]), {
+          tti
+        })
+      })
+    }));
   },
   incrementReRender: (componentName) => {
     const state = get();
@@ -111,6 +67,18 @@ var useMetricsStore = create((set, get) => ({
           })
         })
       })
+    }));
+  },
+  setStartupTime: (time) => {
+    set({ startupTime: time });
+  },
+  setFPS: (fps) => {
+    set({ fps });
+  },
+  addNetworkRequest: (request) => {
+    set((state) => ({
+      networkRequests: [...state.networkRequests, request].slice(-50)
+      // Keep last 50 requests
     }));
   }
 }));
@@ -237,7 +205,6 @@ function trackStartupTime() {
       const duration = Date.now() - start;
       global.__OPTIC_STARTUP_CAPTURED__ = true;
       useMetricsStore.getState().setStartupTime(duration);
-      console.log(`[useoptic] Startup time: ${duration}ms`);
     }
   });
 }
@@ -267,7 +234,6 @@ function startFPSTracking() {
     animationFrameId = requestAnimationFrame(measureFPS);
   }
   animationFrameId = requestAnimationFrame(measureFPS);
-  console.log("[useoptic] FPS tracking started");
 }
 function getFPSColor(fps) {
   if (fps === null) return "#fff";
@@ -277,6 +243,38 @@ function getFPSColor(fps) {
 }
 
 // src/core/initOptic.ts
+import React2 from "react";
+function withScreenTracking(WrappedComponent) {
+  const displayName = WrappedComponent.displayName || WrappedComponent.name || "Unknown";
+  const screenName = displayName.replace(/Screen$/, "");
+  function WithScreenTracking(props) {
+    const setCurrentScreen = useMetricsStore((state) => state.setCurrentScreen);
+    React2.useEffect(() => {
+      console.log(`[useoptic] Setting current screen to "${screenName}"`);
+      setCurrentScreen(screenName);
+      return () => setCurrentScreen(null);
+    }, [setCurrentScreen]);
+    return React2.createElement(WrappedComponent, props);
+  }
+  WithScreenTracking.displayName = `WithScreenTracking(${displayName})`;
+  return WithScreenTracking;
+}
+function isScreenComponent(component) {
+  const name = component.displayName || component.name || "";
+  return name.endsWith("Screen") || name.endsWith("Page") || name.endsWith("View");
+}
+var wrappedComponents = /* @__PURE__ */ new WeakMap();
+function wrapIfScreen(Component) {
+  if (!isScreenComponent(Component)) {
+    return Component;
+  }
+  if (wrappedComponents.has(Component)) {
+    return wrappedComponents.get(Component);
+  }
+  const wrapped = withScreenTracking(Component);
+  wrappedComponents.set(Component, wrapped);
+  return wrapped;
+}
 function initOptic(options = {}) {
   const { enabled = true, onMetricsLogged } = options;
   setOpticEnabled(enabled);
@@ -292,7 +290,8 @@ function initOptic(options = {}) {
     fps = true
   } = options;
   if (rootComponent) {
-    setRootComponent(rootComponent);
+    const wrappedRoot = wrapIfScreen(rootComponent);
+    setRootComponent(wrappedRoot);
   }
   if (reRenders) {
     initRenderTracking();
@@ -332,7 +331,7 @@ function initOptic(options = {}) {
 }
 
 // src/overlay/Overlay.tsx
-import React2, { useRef, useState } from "react";
+import React3, { useRef, useState } from "react";
 import { View, Text, StyleSheet, PanResponder, Animated, Dimensions, TouchableOpacity, Clipboard, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 var minimizeImageUrl = "https://img.icons8.com/material-rounded/24/ffffff/minus.png";
@@ -408,7 +407,7 @@ var Overlay = () => {
     };
     Clipboard.setString(JSON.stringify(metrics, null, 2));
   };
-  React2.useEffect(() => {
+  React3.useEffect(() => {
     if (latestRequest) {
       console.log("[useoptic] Overlay received network request:", {
         url: latestRequest.url,
@@ -417,7 +416,7 @@ var Overlay = () => {
       });
     }
   }, [latestRequest]);
-  return /* @__PURE__ */ React2.createElement(SafeAreaView, { style: styles.safeArea, pointerEvents: "box-none" }, /* @__PURE__ */ React2.createElement(
+  return /* @__PURE__ */ React3.createElement(SafeAreaView, { style: styles.safeArea, pointerEvents: "box-none" }, /* @__PURE__ */ React3.createElement(
     Animated.View,
     __spreadValues({
       style: [
@@ -432,22 +431,22 @@ var Overlay = () => {
         }
       ]
     }, panResponder.panHandlers),
-    /* @__PURE__ */ React2.createElement(View, { style: styles.dragHandle }),
-    /* @__PURE__ */ React2.createElement(View, { style: styles.header }, /* @__PURE__ */ React2.createElement(View, { style: styles.headerTop }, /* @__PURE__ */ React2.createElement(Text, { style: styles.text }, "Performance Metrics"), /* @__PURE__ */ React2.createElement(View, { style: styles.headerButtons }, /* @__PURE__ */ React2.createElement(
+    /* @__PURE__ */ React3.createElement(View, { style: styles.dragHandle }),
+    /* @__PURE__ */ React3.createElement(View, { style: styles.header }, /* @__PURE__ */ React3.createElement(View, { style: styles.headerTop }, /* @__PURE__ */ React3.createElement(Text, { style: styles.text }, "Performance Metrics"), /* @__PURE__ */ React3.createElement(View, { style: styles.headerButtons }, /* @__PURE__ */ React3.createElement(
       TouchableOpacity,
       {
         style: [styles.iconButton],
         onPress: () => setIsMinimized(!isMinimized)
       },
-      /* @__PURE__ */ React2.createElement(
+      /* @__PURE__ */ React3.createElement(
         Image,
         {
           source: { uri: isMinimized ? maximizeImageUrl : minimizeImageUrl },
           style: styles.icon
         }
       )
-    ))), /* @__PURE__ */ React2.createElement(Text, { style: styles.screenName }, currentScreen || "No Screen")),
-    !isMinimized && /* @__PURE__ */ React2.createElement(View, { style: styles.metricsContainer }, /* @__PURE__ */ React2.createElement(View, { style: styles.performanceSection }, /* @__PURE__ */ React2.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React2.createElement(Text, { style: styles.metricLabel }, "FPS"), /* @__PURE__ */ React2.createElement(
+    ))), /* @__PURE__ */ React3.createElement(View, { style: styles.screenNameContainer }, /* @__PURE__ */ React3.createElement(Text, { style: styles.screenName }, currentScreen || "No Screen"))),
+    !isMinimized && /* @__PURE__ */ React3.createElement(View, { style: styles.metricsContainer }, /* @__PURE__ */ React3.createElement(View, { style: styles.performanceSection }, /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "FPS"), /* @__PURE__ */ React3.createElement(
       Text,
       {
         style: [
@@ -456,7 +455,7 @@ var Overlay = () => {
         ]
       },
       fps !== null ? `${fps}` : "..."
-    )), /* @__PURE__ */ React2.createElement(View, { style: styles.divider }), /* @__PURE__ */ React2.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React2.createElement(Text, { style: styles.metricLabel }, "Network Request"), /* @__PURE__ */ React2.createElement(View, { style: styles.networkInfo }, latestRequest && /* @__PURE__ */ React2.createElement(React2.Fragment, null, /* @__PURE__ */ React2.createElement(
+    )), /* @__PURE__ */ React3.createElement(View, { style: styles.divider }), /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "Network Request"), /* @__PURE__ */ React3.createElement(View, { style: styles.networkInfo }, latestRequest && /* @__PURE__ */ React3.createElement(React3.Fragment, null, /* @__PURE__ */ React3.createElement(
       Text,
       {
         style: [
@@ -468,7 +467,7 @@ var Overlay = () => {
       " \u2192 ",
       Math.round(latestRequest.duration),
       "ms"
-    ), latestRequest.status !== 200 && /* @__PURE__ */ React2.createElement(
+    ), latestRequest.status !== 200 && /* @__PURE__ */ React3.createElement(
       Text,
       {
         style: [
@@ -480,7 +479,7 @@ var Overlay = () => {
       latestRequest.status,
       " ",
       latestRequest.status >= 500 ? "\u{1F534}" : "\u{1F7E0}"
-    )))), /* @__PURE__ */ React2.createElement(View, { style: styles.divider }), /* @__PURE__ */ React2.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React2.createElement(Text, { style: styles.metricLabel }, "TTI"), /* @__PURE__ */ React2.createElement(
+    )))), /* @__PURE__ */ React3.createElement(View, { style: styles.divider }), /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "TTI"), /* @__PURE__ */ React3.createElement(
       Text,
       {
         style: [
@@ -489,7 +488,7 @@ var Overlay = () => {
         ]
       },
       (currentScreenMetrics == null ? void 0 : currentScreenMetrics.tti) !== null ? `${currentScreenMetrics == null ? void 0 : currentScreenMetrics.tti}ms` : "..."
-    )), /* @__PURE__ */ React2.createElement(View, { style: styles.divider }), /* @__PURE__ */ React2.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React2.createElement(Text, { style: styles.metricLabel }, "Startup Time"), /* @__PURE__ */ React2.createElement(
+    )), /* @__PURE__ */ React3.createElement(View, { style: styles.divider }), /* @__PURE__ */ React3.createElement(View, { style: styles.metricRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.metricLabel }, "Startup Time"), /* @__PURE__ */ React3.createElement(
       Text,
       {
         style: [
@@ -498,8 +497,8 @@ var Overlay = () => {
         ]
       },
       startupTime !== null ? `${startupTime}ms` : "..."
-    ))), currentScreenMetrics && Object.keys(currentScreenMetrics.reRenderCounts).length > 0 && /* @__PURE__ */ React2.createElement(View, { style: styles.reRendersContainer }, /* @__PURE__ */ React2.createElement(View, { style: styles.divider }), /* @__PURE__ */ React2.createElement(Text, { style: styles.reRendersTitle }, "Re-renders"), Object.entries(currentScreenMetrics.reRenderCounts).map(([name, count], index, array) => /* @__PURE__ */ React2.createElement(React2.Fragment, { key: name }, /* @__PURE__ */ React2.createElement(View, { style: styles.reRenderRow }, /* @__PURE__ */ React2.createElement(Text, { style: styles.reRenderName }, name), /* @__PURE__ */ React2.createElement(View, { style: styles.reRenderCountContainer }, /* @__PURE__ */ React2.createElement(Text, { style: styles.reRenderCount }, count), /* @__PURE__ */ React2.createElement(Text, { style: styles.reRenderCountSuffix }, "x"))), index < array.length - 1 && /* @__PURE__ */ React2.createElement(View, { style: styles.divider }))))),
-    /* @__PURE__ */ React2.createElement(View, { style: styles.poweredByContainer }, /* @__PURE__ */ React2.createElement(Text, { style: styles.poweredByText }, "Powered by Optic"))
+    ))), currentScreenMetrics && Object.keys(currentScreenMetrics.reRenderCounts).length > 0 && /* @__PURE__ */ React3.createElement(View, { style: styles.reRendersContainer }, /* @__PURE__ */ React3.createElement(View, { style: styles.divider }), /* @__PURE__ */ React3.createElement(Text, { style: styles.reRendersTitle }, "Re-renders"), Object.entries(currentScreenMetrics.reRenderCounts).map(([name, count], index, array) => /* @__PURE__ */ React3.createElement(React3.Fragment, { key: name }, /* @__PURE__ */ React3.createElement(View, { style: styles.reRenderRow }, /* @__PURE__ */ React3.createElement(Text, { style: styles.reRenderName }, name), /* @__PURE__ */ React3.createElement(View, { style: styles.reRenderCountContainer }, /* @__PURE__ */ React3.createElement(Text, { style: styles.reRenderCount }, count), /* @__PURE__ */ React3.createElement(Text, { style: styles.reRenderCountSuffix }, "x"))), index < array.length - 1 && /* @__PURE__ */ React3.createElement(View, { style: styles.divider }))))),
+    /* @__PURE__ */ React3.createElement(View, { style: styles.poweredByContainer }, /* @__PURE__ */ React3.createElement(Text, { style: styles.poweredByText }, "Powered by Optic"))
   ));
 };
 var styles = StyleSheet.create({
@@ -572,11 +571,25 @@ var styles = StyleSheet.create({
     fontSize: 15,
     letterSpacing: 0.5
   },
+  screenNameContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4
+  },
+  screenNameLabel: {
+    color: "#fff",
+    fontSize: 12,
+    opacity: 0.7,
+    marginRight: 4
+  },
   screenName: {
     color: "#fff",
     fontSize: 13,
-    opacity: 0.7,
-    marginTop: 4,
+    fontWeight: "600",
     fontStyle: "italic"
   },
   metricsContainer: {
@@ -671,10 +684,10 @@ var styles = StyleSheet.create({
 });
 
 // src/metrics/reRenders.ts
-import * as React3 from "react";
-var { useEffect: useEffect2, useRef: useRef2 } = React3;
+import * as React4 from "react";
+var { useEffect: useEffect2, useRef: useRef2 } = React4;
 function useRenderMonitor(componentName, props) {
-  if (!React3) {
+  if (!React4) {
     console.error("[useoptic] React is not available. Make sure React is properly imported.");
     return;
   }
@@ -716,29 +729,23 @@ if (!global.__OPTIC_SCREEN_TTI_START__) {
   global.__OPTIC_SCREEN_TTI_START__ = {};
 }
 function useScreenMetrics(screenName) {
-  console.log(`[useoptic] useScreenMetrics called for "${screenName}"`);
   const setCurrentScreen = useMetricsStore((state) => state.setCurrentScreen);
   const setTTI = useMetricsStore((state) => state.setTTI);
   const screens = useMetricsStore((state) => state.screens);
   const prevScreenRef = useRef3(null);
   const mountedRef = useRef3(true);
   const handleScreenChange = useCallback(() => {
-    console.log(`[useoptic] handleScreenChange called for "${screenName}"`);
     const isNewScreen = prevScreenRef.current !== screenName;
     if (isNewScreen) {
-      console.log(`[useoptic] New screen detected: "${screenName}"`);
       prevScreenRef.current = screenName;
       global.__OPTIC_SCREEN_TTI_CAPTURED__[screenName] = false;
       setCurrentScreen(screenName);
-      console.log(`[useoptic] Starting TTI measurement for "${screenName}"`);
     }
   }, [screenName, setCurrentScreen]);
   useEffect3(() => {
-    console.log(`[useoptic] Screen change effect triggered for "${screenName}"`);
     handleScreenChange();
   }, [handleScreenChange]);
   useEffect3(() => {
-    console.log(`[useoptic] TTI measurement effect triggered for "${screenName}"`);
     mountedRef.current = true;
     if (!global.__OPTIC_SCREEN_TTI_CAPTURED__[screenName]) {
       console.log(`[useoptic] Measuring TTI for "${screenName}"`);
@@ -749,7 +756,6 @@ function useScreenMetrics(screenName) {
         if (mountedRef.current) {
           const start = global.__OPTIC_SCREEN_TTI_START__[screenName];
           const tti = Date.now() - start;
-          console.log(`[useoptic] Setting TTI for "${screenName}": ${tti}ms`);
           setTTI(screenName, tti);
         }
       });
@@ -757,7 +763,6 @@ function useScreenMetrics(screenName) {
       console.log(`[useoptic] TTI already captured for "${screenName}"`);
     }
     return () => {
-      console.log(`[useoptic] Cleaning up TTI measurement for "${screenName}"`);
       mountedRef.current = false;
       if (prevScreenRef.current !== screenName) {
         if (screens[screenName]) {

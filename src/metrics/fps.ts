@@ -32,14 +32,12 @@ export function startFPSTracking() {
   }
 
   animationFrameId = requestAnimationFrame(measureFPS);
-  console.log('[useoptic] FPS tracking started');
 }
 
 export function stopFPSTracking() {
   if (animationFrameId !== null) {
     cancelAnimationFrame(animationFrameId);
     animationFrameId = null;
-    console.log('[useoptic] FPS tracking stopped');
   }
 }
 

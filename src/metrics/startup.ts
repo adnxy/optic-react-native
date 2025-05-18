@@ -37,7 +37,6 @@ export function trackStartupTime() {
       global.__OPTIC_STARTUP_CAPTURED__ = true;
       
       useMetricsStore.getState().setStartupTime(duration);
-      console.log(`[useoptic] Startup time: ${duration}ms`);
     }
   });
 }

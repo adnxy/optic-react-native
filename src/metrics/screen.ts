@@ -19,7 +19,6 @@ if (!global.__OPTIC_SCREEN_TTI_START__) {
  * @param screenName Name of the current screen
  */
 export function useScreenMetrics(screenName: string) {
-  console.log(`[useoptic] useScreenMetrics called for "${screenName}"`);
   
   const setCurrentScreen = useMetricsStore((state) => state.setCurrentScreen);
   const setTTI = useMetricsStore((state) => state.setTTI);
@@ -29,27 +28,22 @@ export function useScreenMetrics(screenName: string) {
 
   // Memoize the screen change handler
   const handleScreenChange = useCallback(() => {
-    console.log(`[useoptic] handleScreenChange called for "${screenName}"`);
     const isNewScreen = prevScreenRef.current !== screenName;
     if (isNewScreen) {
-      console.log(`[useoptic] New screen detected: "${screenName}"`);
       prevScreenRef.current = screenName;
       // Reset TTI capture flag for the new screen
       global.__OPTIC_SCREEN_TTI_CAPTURED__[screenName] = false;
       setCurrentScreen(screenName);
-      console.log(`[useoptic] Starting TTI measurement for "${screenName}"`);
     }
   }, [screenName, setCurrentScreen]);
 
   // Handle screen changes
   useEffect(() => {
-    console.log(`[useoptic] Screen change effect triggered for "${screenName}"`);
     handleScreenChange();
   }, [handleScreenChange]);
 
   // Handle TTI measurement
   useEffect(() => {
-    console.log(`[useoptic] TTI measurement effect triggered for "${screenName}"`);
     mountedRef.current = true;
 
     if (!global.__OPTIC_SCREEN_TTI_CAPTURED__[screenName]) {
@@ -63,7 +57,6 @@ export function useScreenMetrics(screenName: string) {
         if (mountedRef.current) {
           const start = global.__OPTIC_SCREEN_TTI_START__[screenName];
           const tti = Date.now() - start;
-          console.log(`[useoptic] Setting TTI for "${screenName}": ${tti}ms`);
           setTTI(screenName, tti);
         }
       });
@@ -72,7 +65,6 @@ export function useScreenMetrics(screenName: string) {
     }
 
     return () => {
-      console.log(`[useoptic] Cleaning up TTI measurement for "${screenName}"`);
       mountedRef.current = false;
       
       // Only reset TTI if we're actually unmounting the screen

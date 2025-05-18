@@ -146,9 +146,11 @@ export const Overlay: React.FC = () => {
               </TouchableOpacity>
             </View>
           </View>
-          <Text style={styles.screenName}>
-            {currentScreen || 'No Screen'}
-          </Text>
+          <View style={styles.screenNameContainer}>
+            <Text style={styles.screenName}>
+              {currentScreen || 'No Screen'}
+            </Text>
+          </View>
         </View>
         
         {!isMinimized && (
@@ -320,11 +322,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
     letterSpacing: 0.5,
   },
+  screenNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  screenNameLabel: {
+    color: '#fff',
+    fontSize: 12,
+    opacity: 0.7,
+    marginRight: 4,
+  },
   screenName: {
     color: '#fff',
     fontSize: 13,
-    opacity: 0.7,
-    marginTop: 4,
+    fontWeight: '600',
     fontStyle: 'italic',
   },
   metricsContainer: {

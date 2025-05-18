@@ -1,29 +1,30 @@
-import * as react from 'react';
-import react__default from 'react';
+import React from 'react';
 
-interface NetworkRequest {
-    url: string;
-    method: string;
-    duration: number;
-    status: number;
-    [key: string]: any;
-}
-interface ScreenMetrics {
-    tti: number | null;
-    reRenderCounts: Record<string, number>;
-}
 interface MetricsState {
     currentScreen: string | null;
-    screens: Record<string, ScreenMetrics>;
+    screens: Record<string, {
+        tti: number | null;
+        reRenderCounts: Record<string, number>;
+    }>;
     startupTime: number | null;
     fps: number | null;
-    networkRequests: NetworkRequest[];
-    setCurrentScreen: (screen: string) => void;
-    setTTI: (screen: string, tti: number | null) => void;
+    networkRequests: Array<{
+        url: string;
+        method: string;
+        duration: number;
+        status: number;
+    }>;
+    setCurrentScreen: (screenName: string | null) => void;
+    setTTI: (screenName: string, tti: number | null) => void;
+    incrementReRender: (componentName: string) => void;
     setStartupTime: (time: number) => void;
     setFPS: (fps: number) => void;
-    addNetworkRequest: (request: NetworkRequest) => void;
-    incrementReRender: (componentName: string) => void;
+    addNetworkRequest: (request: {
+        url: string;
+        method: string;
+        duration: number;
+        status: number;
+    }) => void;
 }
 
 interface InitOpticOptions {
@@ -37,7 +38,7 @@ interface InitOpticOptions {
     onMetricsLogged?: (metrics: MetricsState) => void;
 }
 declare function initOptic(options?: InitOpticOptions): {
-    rootComponent: react.ComponentType<any> | undefined;
+    rootComponent: React.ComponentType<any> | undefined;
     reRenders: boolean;
     network: boolean;
     tti: boolean;
@@ -45,7 +46,7 @@ declare function initOptic(options?: InitOpticOptions): {
     fps: boolean;
     unsubscribe: () => void;
 } | {
-    rootComponent: react.ComponentType<any> | undefined;
+    rootComponent: React.ComponentType<any> | undefined;
     reRenders: boolean;
     network: boolean;
     tti: boolean;
@@ -54,7 +55,7 @@ declare function initOptic(options?: InitOpticOptions): {
     unsubscribe?: undefined;
 } | undefined;
 
-declare const Overlay: react__default.FC;
+declare const Overlay: React.FC;
 
 /**
  * Hook to monitor and log prop changes for a component.
