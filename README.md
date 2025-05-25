@@ -17,7 +17,7 @@ A lightweight performance monitoring tool for React Native applications. Track s
 
 ## Demo
 
-<img src="[https://github.com/user-attachments/assets/ff4fe58f-7511-49a7-b33e-87d41388cac6](https://github.com/user-attachments/assets/170d557d-8792-45dd-9b99-e28d029a0ec7" width="350" alt="Optic Performance Monitor Screenshot" />
+<img src="https://github.com/user-attachments/assets/ff4fe58f-7511-49a7-b33e-87d41388cac6](https://github.com/user-attachments/assets/170d557d-8792-45dd-9b99-e28d029a0ec7" width="350" alt="Optic Performance Monitor Screenshot" />
 
 ## Installation
 
