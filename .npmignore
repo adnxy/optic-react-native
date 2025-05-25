@@ -1,0 +1,60 @@
+# Source
+src/
+tests/
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Development
+.git/
+.github/
+.gitignore
+.eslintrc.json
+.prettierrc
+jest.config.js
+tsconfig.json
+tsup.config.ts
+*.config.js
+*.config.ts
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Build
+coverage/
+.nyc_output/
+dist/
+build/
+*.tgz
+
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# TypeScript
+*.tsbuildinfo 
