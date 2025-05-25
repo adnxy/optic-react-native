@@ -2,7 +2,7 @@
 
 A lightweight performance monitoring tool for React Native applications. Track startup time, network requests, FPS, and custom traces in real-time.
 
-![npm version](https://www.npmjs.com/package/optic-react-native)
+![npm version](https://img.shields.io/npm/v/optic-react-native)
 
 ## Features
 
