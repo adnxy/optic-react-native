@@ -1,49 +1,59 @@
 import { useMetricsStore } from '../store/metricsStore';
 
-let frameCount = 0;
-let lastTime = performance.now();
-let animationFrameId: number | null = null;
+export interface FPSMetrics {
+  fps: number;
+  timestamp: number;
+}
 
-const FPS_THRESHOLDS = {
-  good: 60,
-  warning: 55,
-};
+export class FPSManager {
+  private frameCount: number = 0;
+  private lastTime: number = 0;
+  private animationFrameId: number | null = null;
+  private readonly updateInterval: number = 1000; // Update FPS every second
 
-export function startFPSTracking() {
-  if (animationFrameId !== null) {
-    return; // Already tracking
+  constructor() {
+    this.lastTime = performance.now();
   }
 
-  function measureFPS() {
+  private updateFPS = () => {
     const currentTime = performance.now();
-    const elapsed = currentTime - lastTime;
-    
-    if (elapsed >= 1000) { // Calculate FPS every second
-      const fps = Math.round((frameCount * 1000) / elapsed);
-      useMetricsStore.getState().setFPS(fps);
-      
-      // Reset counters
-      frameCount = 0;
-      lastTime = currentTime;
+    const elapsed = currentTime - this.lastTime;
+
+    if (elapsed >= this.updateInterval) {
+      const fps = Math.round((this.frameCount * 1000) / elapsed);
+      const metricsStore = useMetricsStore.getState();
+      const currentScreen = metricsStore.currentScreen;
+
+      if (currentScreen) {
+        metricsStore.setFPS(fps, currentScreen);
+      }
+
+      this.frameCount = 0;
+      this.lastTime = currentTime;
     }
-    
-    frameCount++;
-    animationFrameId = requestAnimationFrame(measureFPS);
-  }
 
-  animationFrameId = requestAnimationFrame(measureFPS);
+    this.frameCount++;
+    this.animationFrameId = requestAnimationFrame(this.updateFPS);
+  };
+
+  public startTracking = () => {
+    if (!this.animationFrameId) {
+      this.lastTime = performance.now();
+      this.frameCount = 0;
+      this.animationFrameId = requestAnimationFrame(this.updateFPS);
+    }
+  };
+
+  public stopTracking = () => {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+  };
 }
 
-export function stopFPSTracking() {
-  if (animationFrameId !== null) {
-    cancelAnimationFrame(animationFrameId);
-    animationFrameId = null;
-  }
-}
-
-export function getFPSColor(fps: number | null): string {
-  if (fps === null) return '#fff';
-  if (fps >= FPS_THRESHOLDS.good) return '#4CAF50'; // Green
-  if (fps >= FPS_THRESHOLDS.warning) return '#FFC107'; // Yellow
-  return '#F44336'; // Red
-} 
+export const getFPSColor = (fps: number): string => {
+  if (fps >= 55) return '#4CAF50'; // Good (green)
+  if (fps >= 30) return '#FFC107'; // Warning (yellow)
+  return '#F44336'; // Poor (red)
+}; 

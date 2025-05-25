@@ -3113,9 +3113,9 @@ kleur@^3.0.3:
   integrity sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==
 
 lan-network@^0.1.6:
-  version "0.1.6"
-  resolved "https://registry.npmjs.org/lan-network/-/lan-network-0.1.6.tgz"
-  integrity sha512-0qPYjNoD89v+bfhkIqFBYGBAof1xhxLqjX8bkNN1kQdP81UHpZw5TDXgEjwB+X2iCFGQmzF8TRmvg4vQcykyDA==
+  version "0.1.7"
+  resolved "https://registry.npmjs.org/lan-network/-/lan-network-0.1.7.tgz"
+  integrity sha512-mnIlAEMu4OyEvUNdzco9xpuB9YVcPkQec+QsgycBCtPZvEqWPCDPfbAE4OJMdBBWpZWtpCn1xw9jJYlwjWI5zQ==
 
 leven@^3.1.0:
   version "3.1.0"

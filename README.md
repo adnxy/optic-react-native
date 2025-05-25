@@ -1,6 +1,6 @@
 # @useoptic/react-native
 
-A lightweight performance monitoring tool for React Native applications. Track TTI, startup time, component re-renders, network requests, FPS, and memory usage in real-time.
+A lightweight performance monitoring tool for React Native applications. Track startup time, network requests, FPS, and custom traces in real-time.
 
 
 ![npm version](https://img.shields.io/npm/v/@useoptic/react-native)
@@ -9,14 +9,11 @@ A lightweight performance monitoring tool for React Native applications. Track T
 
 ## Features
 
-- 📊 Real-time performance metrics
-- 🚀 Time to Interactive (TTI) tracking
-- ⏱️ App startup time measurement
-- 🔄 Component re-render monitoring
-- 🌐 Network request tracking
-- 📈 FPS monitoring
-- 💾 Memory usage tracking
-- 📱 Draggable overlay display
+- App startup time measurement
+- Network request tracking
+- Custom interaction tracing
+- Draggable overlay display
+- Send metrics to custom API
 
 ## Demo
 
@@ -30,90 +27,99 @@ npm install @useoptic/react-native
 yarn add @useoptic/react-native
 ```
 
-## Usage
+## Quick Start
 
 1. Initialize Optic in your app's entry point:
 
 ```typescript
 import { initOptic } from '@useoptic/react-native';
 
-initOptic()
+initOptic();
 ```
 
-2. Add the overlay component:
+2. Add the overlay component to your app:
 
 ```typescript
-import { Overlay } from '@useoptic/react-native';
+import { OpticProvider } from '@useoptic/react-native';
 
 const App = () => (
-  <>
+  <>  
+    <OpticProvider>
     <YourAppContent />
-    <Overlay />
+    <OpticProvider />
   </>
 );
 ```
 
-## API
+## Custom Metrics
 
-### `initOptic(options?)`
+### Tracking Custom Interactions
+
+Use the tracing API to measure specific interactions in your app:
+
+```typescript
+import { startTrace, endTrace } from '@useoptic/react-native';
+
+const handleButtonPress = async () => {
+  startTrace('ButtonPress');
+  
+  try {
+    await someAsyncOperation();
+  } finally {
+    endTrace('ButtonPress', 'ButtonComponent');
+  }
+};
+```
+
+### Tracking Re-renders
+
+Monitor component re-renders using the `useRenderMonitor` hook:
+
+```typescript
+import { useRenderMonitor } from '@useoptic/react-native';
+
+const MyComponent = () => {
+  useRenderMonitor('MyComponent');
+  // ... your component code
+};
+```
+
+## Configuration
 
 ```typescript
 interface InitOpticOptions {
   enabled?: boolean;     // Enable/disable all metrics (default: true)
-  tti?: boolean;         // Track TTI (default: true)
   startup?: boolean;     // Track startup time (default: true)
-  reRenders?: boolean;   // Track re-renders (default: true)
-  network?: boolean;     // Track network requests (default: false)
-  fps?: boolean;         // Track FPS (default: true)
-  memory?: boolean;      // Track memory usage (default: true)
+  network?: boolean;     // Track network requests (default: true)
+  reRenders?: boolean;   // Track component re-renders (default: true)
+  traces?: boolean;      // Enable custom tracing (default: true)
   onMetricsLogged?: (metrics: any) => void; // Callback for metrics updates
 }
 ```
 
-### `Overlay`
-
-A draggable overlay component that displays:
-- TTI and startup time
-- Component re-render counts
-- Network request status and duration
-- FPS with color coding
-- Memory usage
-- Minimizable view
-- Copy metrics to clipboard
-
-## Metrics Thresholds
-
-### Network Requests
-- 🟢 ≤ 200ms
-- 🟡 ≤ 500ms
-- 🔴 > 500ms
-
-### FPS
-- 🟢 ≥ 60 FPS
-- 🟡 ≥ 30 FPS
-- 🔴 < 30 FPS
-
-### Memory Usage
-- 🟢 ≤ 60%
-- 🟡 ≤ 80%
-- 🔴 > 80%
-
-## Troubleshooting
-
-- **Overlay not visible**: Ensure it's mounted at root level and `initOptic()` was called
-- **Missing metrics**: Verify features are enabled in `initOptic` options
-- **Network tracking**: Enable `network: true` in options
-- **Performance impact**: Disable unused features in development
-
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+We welcome contributions! Here's how you can help:
 
 1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Development Setup
+
+1. Clone the repository
+2. Install dependencies: `yarn install`
+3. Run tests: `yarn test`
+4. Build the package: `yarn build`
+
+### Code Style
+
+- Follow the existing code style
+- Write tests for new features
+- Update documentation as needed
+- Keep commits atomic and well-described
 
 ## License
 

@@ -1,5 +1,6 @@
 # OSX
 .DS_Store
+Thumbs.db
 
 # Xcode
 build/
@@ -33,9 +34,9 @@ local.properties
 
 # node.js
 node_modules/
-npm-debug.log
-yarn-debug.log
-yarn-error.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # fastlane
 **/fastlane/report.xml
@@ -103,4 +104,8 @@ logs
 # Expo
 .expo/
 web-build/
-dist/ 
+dist/
+
+# Dependencies
+.pnp/
+.pnp.js 

@@ -1,5 +1,6 @@
 {
   "name": "optic-react-native",
+  "author": "Adnan Sahinovic",
   "version": "1.0.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,10 +13,9 @@
     "prepare": "tsup",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": ["react-native", "react", "optic", "metrics", "performance", "debugging"],
+  "license": "MIT",
+  "description": "React Native library for Optic",
   "dependencies": {
     "@react-navigation/native": "^7.1.9",
     "expo-router": "^5.0.7",

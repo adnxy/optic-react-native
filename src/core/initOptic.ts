@@ -1,28 +1,26 @@
-import { initRenderTracking, setRootComponent } from '../metrics/globalRenderTracking';
+import { initRenderTracking } from '../metrics/globalRenderTracking';
 import { initNetworkTracking } from '../metrics/network';
 import { useMetricsStore } from '../store/metricsStore';
 import { trackStartupTime } from '../metrics/startup';
-import { startFPSTracking } from '../metrics/fps';
-import type { MetricsState } from '../store/metricsStore';
 import { setOpticEnabled } from '../store/metricsStore';
 import React from 'react';
 
 export interface InitOpticOptions {
-  rootComponent?: React.ComponentType<any>;
-  reRenders?: boolean;
-  network?: boolean;
-  tti?: boolean;
-  startup?: boolean;
-  fps?: boolean;
   enabled?: boolean;
-  metrics?: {
-    tti?: boolean;
-    startup?: boolean;
-    reRenders?: boolean;
-    fps?: boolean;
-    network?: boolean;
-  };
   onMetricsLogged?: (metrics: any) => void;
+  network?: boolean;
+  startup?: boolean;
+  reRenders?: boolean;
+  traces?: boolean;
+}
+
+export interface OpticConfig {
+  enabled: boolean;
+  onMetricsLogged?: (metrics: any) => void;
+  network: boolean;
+  startup: boolean;
+  reRenders: boolean;
+  traces: boolean;
 }
 
 // Create a wrapper component that automatically tracks screen names
@@ -72,25 +70,28 @@ function wrapIfScreen<P extends object>(Component: React.ComponentType<P>): Reac
 }
 
 export function initOptic(options: InitOpticOptions = {}) {
-  const { enabled = true, onMetricsLogged } = options;
+  const {
+    enabled = true,
+    onMetricsLogged,
+    network = true,
+    startup = true,
+    reRenders = true,
+    traces = true,
+  } = options;
+
+  const config: OpticConfig = {
+    enabled,
+    onMetricsLogged,
+    network,
+    startup,
+    reRenders,
+    traces,
+  };
+
   setOpticEnabled(enabled);
   if (!enabled) {
     // Do not initialize anything if disabled
     return;
-  }
-  const { 
-    rootComponent, 
-    reRenders = false, 
-    network = false,
-    tti = true,
-    startup = true,
-    fps = true
-  } = options;
-
-  // Set the root component if provided
-  if (rootComponent) {
-    const wrappedRoot = wrapIfScreen(rootComponent);
-    setRootComponent(wrappedRoot);
   }
 
   // Initialize render tracking if enabled
@@ -108,11 +109,6 @@ export function initOptic(options: InitOpticOptions = {}) {
     trackStartupTime();
   }
 
-  // Start FPS tracking if enabled
-  if (fps) {
-    startFPSTracking();
-  }
-
   // Initialize metrics store
   useMetricsStore.getState();
 
@@ -123,22 +119,10 @@ export function initOptic(options: InitOpticOptions = {}) {
     });
     // Optionally return unsubscribe so the user can clean up
     return {
-      rootComponent,
-      reRenders,
-      network,
-      tti,
-      startup,
-      fps,
+      config,
       unsubscribe,
     };
   }
 
-  return {
-    rootComponent,
-    reRenders,
-    network,
-    tti,
-    startup,
-    fps
-  };
+  return config;
 }

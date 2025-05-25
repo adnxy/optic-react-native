@@ -12,7 +12,6 @@ export const logger = {
     }
   },
   error: (...args: any[]) => {
-    // Always log errors, even in production
-    console.error('[useoptic]', ...args);
+      console.error('[useoptic]', ...args);
   }
 }; 

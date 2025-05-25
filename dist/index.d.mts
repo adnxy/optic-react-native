@@ -2,54 +2,38 @@ import React from 'react';
 import * as zustand from 'zustand';
 
 interface InitOpticOptions {
-    rootComponent?: React.ComponentType<any>;
-    reRenders?: boolean;
-    network?: boolean;
-    tti?: boolean;
-    startup?: boolean;
-    fps?: boolean;
     enabled?: boolean;
-    metrics?: {
-        tti?: boolean;
-        startup?: boolean;
-        reRenders?: boolean;
-        fps?: boolean;
-        network?: boolean;
-    };
     onMetricsLogged?: (metrics: any) => void;
+    network?: boolean;
+    startup?: boolean;
+    reRenders?: boolean;
+    traces?: boolean;
 }
-declare function initOptic(options?: InitOpticOptions): {
-    rootComponent: React.ComponentType<any> | undefined;
-    reRenders: boolean;
+interface OpticConfig {
+    enabled: boolean;
+    onMetricsLogged?: (metrics: any) => void;
     network: boolean;
-    tti: boolean;
     startup: boolean;
-    fps: boolean;
+    reRenders: boolean;
+    traces: boolean;
+}
+declare function initOptic(options?: InitOpticOptions): OpticConfig | {
+    config: OpticConfig;
     unsubscribe: () => void;
-} | {
-    rootComponent: React.ComponentType<any> | undefined;
-    reRenders: boolean;
-    network: boolean;
-    tti: boolean;
-    startup: boolean;
-    fps: boolean;
-    unsubscribe?: undefined;
 } | undefined;
 
-declare global {
-    var __OPTIC_APP_TTI_START__: Record<string, number>;
-}
 interface OpticProviderProps {
     children: React.ReactNode;
     /**
      * Enable or disable specific metrics
      */
     metrics?: {
-        tti?: boolean;
+        enabled?: boolean;
         startup?: boolean;
         reRenders?: boolean;
         fps?: boolean;
         network?: boolean;
+        traces?: boolean;
     };
     /**
      * Show or hide the performance overlay
@@ -65,21 +49,27 @@ interface NetworkRequest {
     status: number;
     [key: string]: any;
 }
+interface Trace {
+    interactionName: string;
+    componentName: string;
+    duration: number;
+    timestamp: number;
+}
 interface MetricsState {
     currentScreen: string | null;
     screens: Record<string, {
         reRenderCounts: Record<string, number>;
-        tti: number | null;
+        fps: number | null;
     }>;
-    startupTime: number | null;
-    fps: number | null;
     networkRequests: NetworkRequest[];
+    traces: Trace[];
+    startupTime: number | null;
     setCurrentScreen: (screenName: string | null) => void;
-    setTTI: (tti: number | null, screenName: string) => void;
     incrementReRender: (componentName: string) => void;
     setStartupTime: (time: number) => void;
-    setFPS: (fps: number) => void;
+    setFPS: (fps: number, screenName: string) => void;
     addNetworkRequest: (request: NetworkRequest) => void;
+    setTrace: (trace: Trace) => void;
 }
 declare const useMetricsStore: zustand.UseBoundStore<zustand.StoreApi<MetricsState>>;
 
@@ -87,7 +77,15 @@ declare const useMetricsStore: zustand.UseBoundStore<zustand.StoreApi<MetricsSta
  * Hook to monitor and log prop changes for a component.
  * @param componentName Name of the component
  * @param props Component props
+ * @param options Additional options for tracking
  */
-declare function useRenderMonitor<T extends Record<string, any>>(componentName: string, props: T): void;
+declare function useRenderMonitor<T extends Record<string, any>>(componentName: string, props: T, options?: {
+    debug?: boolean;
+    ignoreProps?: string[];
+    trackStack?: boolean;
+}): void;
 
-export { type InitOpticOptions, OpticProvider, initOptic, useMetricsStore, useRenderMonitor };
+declare const startTrace: (interactionName: string) => void;
+declare const endTrace: (interactionName: string, componentName: string) => void;
+
+export { type InitOpticOptions, OpticProvider, endTrace, initOptic, startTrace, useMetricsStore, useRenderMonitor };

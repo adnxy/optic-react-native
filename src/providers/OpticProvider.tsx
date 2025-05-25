@@ -1,17 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { useMetricsStore } from '../store/metricsStore';
 import { Overlay } from '../overlay/Overlay';
-import { startTTITracking, stopTTITracking, resetTTIForCurrentScreen } from '../metrics/tti';
 import { useNavigation, useRoute, useNavigationContainerRef } from '@react-navigation/native';
 import { usePathname, useSegments } from 'expo-router';
-
-declare global {
-  var __OPTIC_APP_TTI_START__: Record<string, number>;
-}
-
-if (!global.__OPTIC_APP_TTI_START__) {
-  global.__OPTIC_APP_TTI_START__ = {};
-}
+import { initRenderTracking } from '../metrics/globalRenderTracking';
+import { FPSManager } from '../metrics/fps';
 
 interface OpticProviderProps {
   children: React.ReactNode;
@@ -19,11 +12,12 @@ interface OpticProviderProps {
    * Enable or disable specific metrics
    */
   metrics?: {
-    tti?: boolean;
+    enabled?: boolean;
     startup?: boolean;
     reRenders?: boolean;
     fps?: boolean;
     network?: boolean;
+    traces?: boolean;
   };
   /**
    * Show or hide the performance overlay
@@ -31,27 +25,50 @@ interface OpticProviderProps {
   showOverlay?: boolean;
 }
 
+const defaultMetrics = {
+  enabled: true,
+  startup: true,
+  reRenders: true,
+  fps: true,
+  network: true,
+  traces: true,
+};
+
 export const OpticProvider: React.FC<OpticProviderProps> = ({ 
   children,
-  metrics = {
-    tti: true,
-    startup: true,
-    reRenders: true,
-    fps: true,
-    network: true,
-  },
+  metrics = defaultMetrics,
   showOverlay = true
 }) => {
-  const setCurrentScreen = useMetricsStore((state) => state.setCurrentScreen);
+  const { setCurrentScreen } = useMetricsStore();
   const currentScreen = useMetricsStore((state) => state.currentScreen);
-  const prevScreenRef = useRef<string | null>(null);
   const pathname = usePathname();
   const segments = useSegments();
   const navigationRef = useNavigationContainerRef();
+  const fpsManager = React.useRef<FPSManager | null>(null);
 
   // Navigation hooks
   const navigation = useNavigation();
   const route = useRoute();
+
+  // Initialize re-render tracking if enabled
+  useEffect(() => {
+    if (metrics.reRenders) {
+      initRenderTracking();
+    }
+  }, [metrics.reRenders]);
+
+  useEffect(() => {
+    if (metrics.enabled && metrics.fps) {
+      fpsManager.current = new FPSManager();
+      fpsManager.current.startTracking();
+    }
+
+    return () => {
+      if (fpsManager.current) {
+        fpsManager.current.stopTracking();
+      }
+    };
+  }, [metrics.enabled, metrics.fps]);
 
   // Function to get the current screen name
   const getCurrentScreenName = () => {
@@ -79,37 +96,7 @@ export const OpticProvider: React.FC<OpticProviderProps> = ({
     // Always set the current screen, even if it's the same
     // This ensures we capture the initial route
     setCurrentScreen(screenName);
-    
-    // Only start TTI tracking if this is a new screen
-    if (prevScreenRef.current !== screenName) {
-      prevScreenRef.current = screenName;
-      startTTITracking();
-    }
   }, [pathname, segments, navigationRef.current]);
-
-  // Handle TTI tracking
-  useEffect(() => {
-    if (!metrics.tti) {
-      stopTTITracking();
-      return;
-    }
-
-    const isNewScreen = prevScreenRef.current !== currentScreen;
-    if (isNewScreen && currentScreen) {
-      console.log(`[useoptic] Screen changed from ${prevScreenRef.current} to ${currentScreen}`);
-      prevScreenRef.current = currentScreen;
-      
-      // Reset TTI for the new screen
-      resetTTIForCurrentScreen();
-    } else if (currentScreen) {
-      // Start TTI tracking if not already started
-      startTTITracking();
-    }
-
-    return () => {
-      stopTTITracking();
-    };
-  }, [currentScreen, metrics.tti]);
 
   return (
     <>

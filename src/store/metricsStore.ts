@@ -9,29 +9,36 @@ export interface NetworkRequest {
   [key: string]: any; // for any extra fields
 }
 
+export interface Trace {
+  interactionName: string;
+  componentName: string;
+  duration: number;
+  timestamp: number;
+}
+
 export interface MetricsState {
   currentScreen: string | null;
   screens: Record<string, { 
     reRenderCounts: Record<string, number>;
-    tti: number | null;
+    fps: number | null;
   }>;
-  startupTime: number | null;
-  fps: number | null;
   networkRequests: NetworkRequest[];
+  traces: Trace[];
+  startupTime: number | null;
   setCurrentScreen: (screenName: string | null) => void;
-  setTTI: (tti: number | null, screenName: string) => void;
   incrementReRender: (componentName: string) => void;
   setStartupTime: (time: number) => void;
-  setFPS: (fps: number) => void;
+  setFPS: (fps: number, screenName: string) => void;
   addNetworkRequest: (request: NetworkRequest) => void;
+  setTrace: (trace: Trace) => void;
 }
 
 export const useMetricsStore = create<MetricsState>((set, get) => ({
   currentScreen: null,
   screens: {},
-  startupTime: null,
-  fps: null,
   networkRequests: [],
+  traces: [],
+  startupTime: null,
 
   setCurrentScreen: (screenName) => {
     set((state) => {
@@ -43,25 +50,13 @@ export const useMetricsStore = create<MetricsState>((set, get) => ({
             ...state.screens,
             [screenName]: {
               reRenderCounts: {},
-              tti: null,
+              fps: null,
             },
           },
         };
       }
       return { currentScreen: screenName };
     });
-  },
-
-  setTTI: (tti, screenName) => {
-    set((state) => ({
-      screens: {
-        ...state.screens,
-        [screenName]: {
-          ...state.screens[screenName],
-          tti,
-        },
-      },
-    }));
   },
 
   incrementReRender: (componentName) => {
@@ -89,13 +84,27 @@ export const useMetricsStore = create<MetricsState>((set, get) => ({
     set({ startupTime: time });
   },
 
-  setFPS: (fps) => {
-    set({ fps });
+  setFPS: (fps, screenName) => {
+    set((state) => ({
+      screens: {
+        ...state.screens,
+        [screenName]: {
+          ...state.screens[screenName],
+          fps,
+        },
+      },
+    }));
   },
 
   addNetworkRequest: (request) => {
     set((state) => ({
       networkRequests: [...state.networkRequests, request].slice(-50), // Keep last 50 requests
+    }));
+  },
+
+  setTrace: (trace) => {
+    set((state) => ({
+      traces: [...state.traces, trace].slice(-10), // Keep last 10 traces
     }));
   },
 }));
