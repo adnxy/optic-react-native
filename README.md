@@ -19,9 +19,9 @@ A lightweight performance monitoring tool for React Native applications. Track s
 ## Installation
 
 ```bash
-npm install @useoptic/react-native
+npm install optic-react-native
 # or
-yarn add @useoptic/react-native
+yarn add optic-react-native
 ```
 
 ## Quick Start
@@ -29,7 +29,7 @@ yarn add @useoptic/react-native
 1. Initialize Optic in your app's entry point:
 
 ```typescript
-import { initOptic } from '@useoptic/react-native';
+import { initOptic } from 'optic-react-native';
 
 initOptic();
 ```
@@ -37,7 +37,7 @@ initOptic();
 2. Add the overlay component to your app:
 
 ```typescript
-import { OpticProvider } from '@useoptic/react-native';
+import { OpticProvider } from 'optic-react-native';
 
 const App = () => (
   <>  
@@ -55,7 +55,7 @@ const App = () => (
 Use the tracing API to measure specific interactions in your app:
 
 ```typescript
-import { startTrace, endTrace } from '@useoptic/react-native';
+import { startTrace, endTrace } from 'optic-react-native';
 
 const handleButtonPress = async () => {
   startTrace('ButtonPress');
@@ -73,7 +73,7 @@ const handleButtonPress = async () => {
 Monitor component re-renders using the `useRenderMonitor` hook:
 
 ```typescript
-import { useRenderMonitor } from '@useoptic/react-native';
+import { useRenderMonitor } from 'optic-react-native;
 
 const MyComponent = () => {
   useRenderMonitor('MyComponent');
@@ -158,7 +158,7 @@ SOFTWARE.
 #### Example Usage
 
 ```js
-import { initOptic } from '@useoptic/react-native';
+import { initOptic } from 'optic-react-native';
 
 initOptic({
   enabled: true, // Set to false to disable metrics and overlay
@@ -186,7 +186,7 @@ To test and visualize component re-renders in the overlay, use the `useRenderMon
 
 ```tsx
 import React from 'react';
-import { useRenderMonitor } from '@useoptic/react-native';
+import { useRenderMonitor } from 'optic-react-native';
 
 export const TestComponent = () => {
   useRenderMonitor('Home');
